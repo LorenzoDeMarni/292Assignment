@@ -22,5 +22,5 @@ with h5py.File('data_structure.h5', 'w') as hdf:
     G1_lorenzo.create_dataset('Lorenzo Walking Raw',data=lorenzo_raw1.values)
     G1_lorenzo.create_dataset('Lorenzo Jumping Raw', data=lorenzo_raw2.values)
     
-    G1_daniil.create_dataset('Daniil Walking Raw', data=daniil_raw1.values)
-    G1_daniil.create_dataset('Daniil Jumping Raw', data=daniil_raw2.values)
+    # G1_daniil.create_dataset('Daniil Walking Raw', data=daniil_raw1.values)
+    # G1_daniil.create_dataset('Daniil Jumping Raw', data=daniil_raw2.values)

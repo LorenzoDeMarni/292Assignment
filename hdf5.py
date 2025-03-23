@@ -12,17 +12,15 @@ lorenzo_raw2=pd.read_csv('jumping_lorenzo.csv')
 with h5py.File('data_structure.h5', 'w') as hdf:
     G1 = hdf.create_group('Raw Data')
 
-    G1.create_dataset('KayKay Raw Walking Data', data=kaykay_raw1.values)
-    G1.create_dataset('KayKay Raw Jumping Data', data=kaykay_raw2.values)
-    G1.create_dataset('Lorenzo Raw Walking Data', data=lorenzo_raw1.values)
-    G1.create_dataset('Lorenzo Raw Jumping Data', data=lorenzo_raw2.values)
-    # G1.create_dataset('Daniil Raw Jumping Data', data=daniil_raw2.values)
-    # G1.create_dataset('Daniil Raw Jumping Data', data=daniil_raw2.values)
-
-    G1_subgroup = G1.create_group('Raw Data Subgroups')
-    G1_subgroup.create_dataset('KayKay Raw Walking Data', data=kaykay_raw1.values)
-    G1_subgroup.create_dataset('KayKay Raw Jumping Data', data=kaykay_raw2.values)
-    G1_subgroup.create_dataset('Lorenzo Raw Walking Data', data=lorenzo_raw1.values)
-    G1_subgroup.create_dataset('Lorenzo Raw Jumping Data', data=lorenzo_raw2.values)
-    # G1_subgroup.create_dataset('Daniil Raw Walking Data', data=)
-    # G1_subgroup.create_dataset('Daniil Raw Jumping Data', data=)
+    G1_kaykay = raw_data_group.create_group('KayKay Raw Data')
+    G1_lorenzo = raw_data_group.create_group('Lorenzo Raw Data')
+    G1_daniil = raw_data_group.create_group('Daniil Raw Data')
+    
+    G1_kaykay.create_dataset('KayKay Walking Raw', data=kaykay_raw1.values)
+    G1_kaykay.create_dataset('KayKay Jumping Raw', data=kaykay_raw2.values)
+    
+    G1_lorenzo.create_dataset('Lorenzo Walking Raw',data=lorenzo_raw1.values)
+    G1_lorenzo.create_dataset('Lorenzo Jumping Raw', data=lorenzo_raw2.values)
+    
+    G1_daniil.create_dataset('Daniil Walking Raw', data=daniil_raw1.values)
+    G1_daniil.create_dataset('Daniil Jumping Raw', data=daniil_raw2.values)

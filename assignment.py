@@ -1,9 +1,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 
 # Load Lorenzo's data
 lorenzo_walking_df = pd.read_csv('walking_lorenzo.csv')
 lorenzo_jumping_df = pd.read_csv('jumping_lorenzo.csv')
+
 
 # Load KayKay's data
 kaykay_walking_df = pd.read_csv('walking_kaykay.csv')
@@ -12,6 +14,18 @@ kaykay_jumping_df = pd.read_csv('jumping_kaykay.csv')
 # Figure 1: Lorenzo's data (walking and jumping in one window)
 fig_lorenzo, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
 fig_lorenzo.suptitle('Lorenzo Data - Absolute Acceleration', fontsize=16)
+
+#-----------------------------------------
+# Identify missing values
+print(lorenzo_walking_df.isna().sum())  # Count NaNs
+print((lorenzo_walking_df == "-").sum().sum())  # Count dashes
+
+# Identify missing values
+print(kaykay_walking_df.isna().sum())  # Count NaNs
+print((kaykay_walking_df == "-").sum().sum())  # Count dashes
+
+
+#-----------------------------------------
 
 # Plot Lorenzo Walking absolute acceleration
 ax1.plot(lorenzo_walking_df['Time (s)'], lorenzo_walking_df['Absolute acceleration (m/s^2)'], 'b-', label='Walking')

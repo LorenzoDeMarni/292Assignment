@@ -21,11 +21,11 @@ print((kaykay_walking_df == "-").sum().sum())  # Count dashes
 
 
 # Apply Moving Average Filter & Fill NaNs 
-lorenzo_walking_df['Filtered Absolute acceleration (m/s^2)'] = lorenzo_walking_df['Absolute acceleration (m/s^2)'].rolling(window=51).mean()
-lorenzo_jumping_df['Filtered Absolute acceleration (m/s^2)'] = lorenzo_jumping_df['Absolute acceleration (m/s^2)'].rolling(window=51).mean()
+lorenzo_walking_df['Filtered Absolute acceleration (m/s^2)'] = lorenzo_walking_df['Absolute acceleration (m/s^2)'].rolling(window=51).mean().bfill()
+lorenzo_jumping_df['Filtered Absolute acceleration (m/s^2)'] = lorenzo_jumping_df['Absolute acceleration (m/s^2)'].rolling(window=51).mean().bfill()
 
-kaykay_walking_df['Filtered Absolute acceleration (m/s^2)'] = kaykay_walking_df['Absolute acceleration (m/s^2)'].rolling(window=51).mean()
-kaykay_jumping_df['Filtered Absolute acceleration (m/s^2)'] = kaykay_jumping_df['Absolute acceleration (m/s^2)'].rolling(window=51).mean()
+kaykay_walking_df['Filtered Absolute acceleration (m/s^2)'] = kaykay_walking_df['Absolute acceleration (m/s^2)'].rolling(window=51).mean().bfill()
+kaykay_jumping_df['Filtered Absolute acceleration (m/s^2)'] = kaykay_jumping_df['Absolute acceleration (m/s^2)'].rolling(window=51).mean().bfill()
 
 #-----------------------------------------
 

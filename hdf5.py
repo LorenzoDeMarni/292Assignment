@@ -7,7 +7,7 @@ kaykay_raw2=pd.read_csv('jumping_kaykay.csv')
 lorenzo_raw1=pd.read_csv('walking_lorenzo.csv')
 lorenzo_raw2=pd.read_csv('jumping_lorenzo.csv')
 # daniil_raw1=pd.read_csv()
-# daniil_raw1=pd.read_csv()
+# daniil_raw2=pd.read_csv()
 
 with h5py.File('data_structure.h5', 'w') as hdf:
     G1 = hdf.create_group('Raw Data')

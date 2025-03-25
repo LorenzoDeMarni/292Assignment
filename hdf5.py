@@ -63,4 +63,4 @@ with h5py.File('data_structure.h5', 'w') as hdf:
 
     #create data sets for segmented data
     # G3_train.create_dataset('Train Data', data=)
-    # G3_train.create_dataset('Test Data', data=)
+    # G3_test.create_dataset('Test Data', data=)

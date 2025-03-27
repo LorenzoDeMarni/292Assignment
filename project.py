@@ -57,11 +57,17 @@ with h5py.File("dataset.h5", "a") as f:
 #endregion
 #region ------------------------------PROCESS RAW DATA AND STORE IN HDF5-----------------------------------------------
 # Function to preprocess acceleration data
-def preprocess_dataframe(df, window_size=55):
+def preprocess_dataframe(df, window_size=51):
     processed_df = df.copy()
     for col in df.columns[1:]:  # Skip 'Time (s)' column
-        processed_df[col] = df[col].rolling(window=window_size).mean().bfill()
+        processed_df[col] = df[col].rolling(window=window_size).mean().bfill() 
     return processed_df
+check_missing_values("lorenzo_walking", raw_dfs["lorenzo_walking"])
+check_missing_values("lorenzo_jumping", raw_dfs["lorenzo_jumping"])
+check_missing_values("kaykay_walking", raw_dfs["kaykay_walking"])
+check_missing_values("kaykay_jumping", raw_dfs["kaykay_jumping"])
+check_missing_values("daniil_walking", raw_dfs["daniil_walking"])
+check_missing_values("daniil_jumping", raw_dfs["daniil_jumping"])
 
 # Apply preprocessing to all datasets
 processed_dfs={}

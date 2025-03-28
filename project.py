@@ -344,3 +344,6 @@ ax2.grid(True)
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 plt.show()
 #endregion  
+
+joblib.dump(clf, 'activity_classifier.pkl')
+print("Model saved as activity_classifier.pkl")

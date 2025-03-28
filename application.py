@@ -8,7 +8,7 @@ from scipy import stats
 from tkinter import Frame, Canvas, BOTH, LEFT, RIGHT, VERTICAL
 from tkinter import ttk
 
-# Loading the trained model
+# load the trained model
 model = joblib.load("activity_classifier.pkl")
 
 #parameters-window size
@@ -50,9 +50,9 @@ def features_to_dataframe(features_list):
 
     # create the data rows
     data = []  # list of lists(rows)
-    for features in features_list:  # iterates through each 5 second segment with feature data
+    for features in features_list:  
         row = []
-        for feature in feature_names:  # adds data for each feature for each axis
+        for feature in feature_names:  
             row.extend(features[feature])
         data.append(row)
 
@@ -140,6 +140,7 @@ content_frame.place(relx=0.5,rely=0.4,anchor="center")
 label=tk.Label(second_frame,text="WELCOME TO THE ACTIVITY CLASSIFIER APP",font=('Comic Sans MS',58,'bold'),bg="#ffcce0",fg="#4b0033")
 label.pack(padx=20,pady=20)
 
+#button addition
 button=tk.Button(second_frame,text="SELECT CSV FILE TO BE CLASSIFIED",font=('Comic Sans MS',40),command=open_csv,fg="#4b0033",activebackground="#8db574",activeforeground="white",highlightthickness=4,
 highlightbackground="#4b0033", highlightcolor="#4b0033")
 button.pack(padx=30,pady=30)

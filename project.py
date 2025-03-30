@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
-from sklearn.metrics import accuracy_score, recall_score, confusion_matrix, ConfusionMatrixDisplay, roc_curve, RocCurveDisplay, roc_auc_score
+from sklearn.metrics import (accuracy_score, recall_score, confusion_matrix, ConfusionMatrixDisplay, roc_curve, RocCurveDisplay, roc_auc_score)
 import joblib
 
 #region ---------------------------------CREATE HDF5 FILE-----------------------------------------------
@@ -25,20 +25,21 @@ with h5py.File("dataset.h5", "w") as f:
     for member in ["Lorenzo", "Kaykay", "Daniil"]:
         raw_data_group.create_group(member)
         preprocess_data_group.create_group(member)
-        
+
 # Create directories for different file types
 directories = ['raw', 'processed', 'segmented']
 for directory in directories:
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-# Function to print missing values and dashes
 def check_missing_values(name, df):
+    """Print missing values and dash-based missing markers."""
     print(f"{name} NaNs:\n{df.isna().sum()}")
     print(f"{name} dashes: {(df == '-').sum().sum()}\n")
 #endregion
+
 #region ---------------------------------LOAD RAW DATA AND STORE IN HDF5-----------------------------------------------
-# List of datasets
+# List of datasets. Adjust if you have different filenames.
 raw_dfs = {
     "lorenzo_walking": pd.read_csv("raw/lorenzo_walking_raw.csv"),
     "lorenzo_jumping": pd.read_csv("raw/lorenzo_jumping_raw.csv"),
@@ -48,34 +49,41 @@ raw_dfs = {
     "daniil_jumping": pd.read_csv("raw/daniil_jumping_raw.csv")
 }
 
-# Store raw data in HDF5
 with h5py.File("dataset.h5", "a") as f:
     for name, df in raw_dfs.items():
         person = name.split('_')[0].capitalize()
         activity = name.split('_')[1]
-        # Store raw data
+        # Store raw data in HDF5
         f[f"Raw Data/{person}/{activity}"] = df.values
 #endregion
+
+
 #region ------------------------------PROCESS RAW DATA AND STORE IN HDF5-----------------------------------------------
-# Function to preprocess acceleration data
 def preprocess_dataframe(df, window_size=51):
+    """
+    Filter data with rolling mean with bfill.
+    Automatically detect time column so we skip it.
+    """
     processed_df = df.copy()
-    for col in df.columns[1:]:  # Skip 'Time (s)' column
-        processed_df[col] = df[col].rolling(window=window_size).mean().bfill() 
+    
+    
+    # Process only non-time columns
+    cols_to_process = df.columns[1:]
+    
+    for col in cols_to_process:
+        processed_df[col] = df[col].rolling(window=window_size).mean().bfill()
     return processed_df
-check_missing_values("lorenzo_walking", raw_dfs["lorenzo_walking"])
-check_missing_values("lorenzo_jumping", raw_dfs["lorenzo_jumping"])
-check_missing_values("kaykay_walking", raw_dfs["kaykay_walking"])
-check_missing_values("kaykay_jumping", raw_dfs["kaykay_jumping"])
-check_missing_values("daniil_walking", raw_dfs["daniil_walking"])
-check_missing_values("daniil_jumping", raw_dfs["daniil_jumping"])
 
-# Apply preprocessing to all datasets
-processed_dfs={}
+# Print missing values
 for name, df in raw_dfs.items():
-    processed_dfs[name]=preprocess_dataframe(df)
+    check_missing_values(name, df)
 
-# Save processed datasets
+# Preprocess all datasets
+processed_dfs = {}
+for name, df in raw_dfs.items():
+    processed_dfs[name] = preprocess_dataframe(df)
+
+# Save processed CSVs
 for name, df in processed_dfs.items():
     file_name = f"{name}_processed.csv"
     df.to_csv(os.path.join('processed', file_name), index=False)
@@ -86,155 +94,148 @@ with h5py.File("dataset.h5", "a") as f:
     for name, df in processed_dfs.items():
         person = name.split('_')[0].capitalize()
         activity = name.split('_')[1]
-        # Store processed data
         f[f"Pre-processed Data/{person}/{activity}"] = df.values
 #endregion
-#region ---------------------------------PLOT DATA (RAW vs FILTERED)-----------------------------------------------
-# Figure 1: Lorenzo's data (walking and jumping in one window)
-fig_lorenzo, axes = plt.subplots(3, 2, figsize=(20, 10))
-ax1, ax2, ax3, ax4, ax5, ax6 = axes.flatten()
 
+#region ---------------------------------PLOT DATA (RAW vs FILTERED)-----------------------------------------------
+fig_lorenzo, axes = plt.subplots(3, 2, figsize=(15, 10))
+ax1, ax2, ax3, ax4, ax5, ax6 = axes.flatten()
 fig_lorenzo.suptitle('Acceleration Processing', fontsize=16)
 
-# Plot Lorenzo Walking acceleration data
-ax1.plot(raw_dfs['lorenzo_walking']['Time (s)'], raw_dfs['lorenzo_walking']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
-ax1.plot(raw_dfs['lorenzo_walking']['Time (s)'], raw_dfs['lorenzo_walking']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
-ax1.plot(raw_dfs['lorenzo_walking']['Time (s)'], raw_dfs['lorenzo_walking']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
-ax1.plot(processed_dfs['lorenzo_walking']['Time (s)'], processed_dfs['lorenzo_walking']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
-ax1.plot(processed_dfs['lorenzo_walking']['Time (s)'], processed_dfs['lorenzo_walking']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')
-ax1.plot(processed_dfs['lorenzo_walking']['Time (s)'], processed_dfs['lorenzo_walking']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
+# Lorenzo Walking
+time_col = raw_dfs['lorenzo_walking'].columns[0]
+abs_col  = raw_dfs['lorenzo_walking'].columns[3]
+
+ax1.plot(raw_dfs['lorenzo_walking'][time_col], raw_dfs['lorenzo_walking'][abs_col], 'k-', alpha=0.7, label='Raw Abs-acceleration')
+ax1.plot(processed_dfs['lorenzo_walking'][time_col], processed_dfs['lorenzo_walking'][abs_col],'r-', label='Filtered Abs-acceleration')
+
 ax1.set_title('Lorenzo Walking')
-ax1.set_xlabel('Time (s)')
-ax1.set_ylabel('Acceleration (m/s²)')
+ax1.set_xlabel(time_col)
+ax1.set_ylabel(abs_col)
 ax1.grid(True)
 ax1.legend()
 
-# Plot Lorenzo Jumping acceleration data
-ax2.plot(raw_dfs['lorenzo_jumping']['Time (s)'], raw_dfs['lorenzo_jumping']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
-ax2.plot(raw_dfs['lorenzo_jumping']['Time (s)'], raw_dfs['lorenzo_jumping']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
-ax2.plot(raw_dfs['lorenzo_jumping']['Time (s)'], raw_dfs['lorenzo_jumping']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
-ax2.plot(processed_dfs['lorenzo_jumping']['Time (s)'], processed_dfs['lorenzo_jumping']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
-ax2.plot(processed_dfs['lorenzo_jumping']['Time (s)'], processed_dfs['lorenzo_jumping']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')
-ax2.plot(processed_dfs['lorenzo_jumping']['Time (s)'], processed_dfs['lorenzo_jumping']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
+# Lorenzo Jumping
+time_col = raw_dfs['lorenzo_jumping'].columns[0]
+abs_col  = raw_dfs['lorenzo_jumping'].columns[3]
+
+ax2.plot(raw_dfs['lorenzo_jumping'][time_col], raw_dfs['lorenzo_jumping'][abs_col], 'k-', alpha=0.7, label='Raw Abs-acceleration')
+ax2.plot(processed_dfs['lorenzo_jumping'][time_col], processed_dfs['lorenzo_jumping'][abs_col], 'r-', label='Filtered Abs-acceleration')
+
 ax2.set_title('Lorenzo Jumping')
-ax2.set_xlabel('Time (s)')
-ax2.set_ylabel('Acceleration (m/s²)')
+ax2.set_xlabel(time_col)
+ax2.set_ylabel(abs_col)
 ax2.grid(True)
 ax2.legend()
 
-ax3.plot(raw_dfs['kaykay_walking']['Time (s)'], raw_dfs['kaykay_walking']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
-ax3.plot(raw_dfs['kaykay_walking']['Time (s)'], raw_dfs['kaykay_walking']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
-ax3.plot(raw_dfs['kaykay_walking']['Time (s)'], raw_dfs['kaykay_walking']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
-ax3.plot(processed_dfs['kaykay_walking']['Time (s)'], processed_dfs['kaykay_walking']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
-ax3.plot(processed_dfs['kaykay_walking']['Time (s)'], processed_dfs['kaykay_walking']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')
-ax3.plot(processed_dfs['kaykay_walking']['Time (s)'], processed_dfs['kaykay_walking']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
-ax3.set_title('KayKay Walking')    
-ax3.set_xlabel('Time (s)')
-ax3.set_ylabel('Acceleration (m/s²)')
-ax3.grid(True)
-ax3.legend()    
+# Kaykay Walking
+time_col = raw_dfs['kaykay_walking'].columns[0]
+abs_col  = raw_dfs['kaykay_walking'].columns[3]
 
-ax4.plot(raw_dfs['kaykay_jumping']['Time (s)'], raw_dfs['kaykay_jumping']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
-ax4.plot(raw_dfs['kaykay_jumping']['Time (s)'], raw_dfs['kaykay_jumping']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
-ax4.plot(raw_dfs['kaykay_jumping']['Time (s)'], raw_dfs['kaykay_jumping']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
-ax4.plot(processed_dfs['kaykay_jumping']['Time (s)'], processed_dfs['kaykay_jumping']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
-ax4.plot(processed_dfs['kaykay_jumping']['Time (s)'], processed_dfs['kaykay_jumping']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')  
-ax4.plot(processed_dfs['kaykay_jumping']['Time (s)'], processed_dfs['kaykay_jumping']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
+ax3.plot(raw_dfs['kaykay_walking'][time_col], raw_dfs['kaykay_walking'][abs_col], 'k-', alpha=0.7, label='Raw Abs-acceleration')
+ax3.plot(processed_dfs['kaykay_walking'][time_col], processed_dfs['kaykay_walking'][abs_col], 'r-', label='Filtered Abs-acceleration')
+
+ax3.set_title('KayKay Walking')
+ax3.set_xlabel(time_col)
+ax3.set_ylabel(abs_col)
+ax3.grid(True)
+ax3.legend()
+
+# Kaykay Jumping
+time_col = raw_dfs['kaykay_jumping'].columns[0]
+abs_col  = raw_dfs['kaykay_jumping'].columns[3]
+
+ax4.plot(raw_dfs['kaykay_jumping'][time_col], raw_dfs['kaykay_jumping'][abs_col], 'k-', alpha=0.7, label='Raw Abs-acceleration')
+ax4.plot(processed_dfs['kaykay_jumping'][time_col], processed_dfs['kaykay_jumping'][abs_col], 'r-', label='Filtered Abs-acceleration')
+
 ax4.set_title('KayKay Jumping')
-ax4.set_xlabel('Time (s)')
-ax4.set_ylabel('Acceleration (m/s²)')
+ax4.set_xlabel(time_col)
+ax4.set_ylabel(abs_col)
 ax4.grid(True)
 ax4.legend()
 
-ax5.plot(raw_dfs['daniil_walking']['Time (s)'], raw_dfs['daniil_walking']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
-ax5.plot(raw_dfs['daniil_walking']['Time (s)'], raw_dfs['daniil_walking']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
-ax5.plot(raw_dfs['daniil_walking']['Time (s)'], raw_dfs['daniil_walking']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
-ax5.plot(processed_dfs['daniil_walking']['Time (s)'], processed_dfs['daniil_walking']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
-ax5.plot(processed_dfs['daniil_walking']['Time (s)'], processed_dfs['daniil_walking']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')
-ax5.plot(processed_dfs['daniil_walking']['Time (s)'], processed_dfs['daniil_walking']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
+# Daniil Walking
+time_col = raw_dfs['daniil_walking'].columns[0]
+abs_col  = raw_dfs['daniil_walking'].columns[3]
+
+ax5.plot(raw_dfs['daniil_walking'][time_col], raw_dfs['daniil_walking'][abs_col], 'k-', alpha=0.7, label='Raw Abs-acceleration')
+ax5.plot(processed_dfs['daniil_walking'][time_col], processed_dfs['daniil_walking'][abs_col], 'r-', label='Filtered Abs-acceleration')
 
 ax5.set_title('Daniil Walking')
-ax5.set_xlabel('Time (s)')
-ax5.set_ylabel('Acceleration (m/s²)')
-ax5.grid(True)  
+ax5.set_xlabel(time_col)
+ax5.set_ylabel(abs_col)
+ax5.grid(True)
 ax5.legend()
 
-ax6.plot(raw_dfs['daniil_jumping']['Time (s)'], raw_dfs['daniil_jumping']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
-ax6.plot(raw_dfs['daniil_jumping']['Time (s)'], raw_dfs['daniil_jumping']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
-ax6.plot(raw_dfs['daniil_jumping']['Time (s)'], raw_dfs['daniil_jumping']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
-ax6.plot(processed_dfs['daniil_jumping']['Time (s)'], processed_dfs['daniil_jumping']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
-ax6.plot(processed_dfs['daniil_jumping']['Time (s)'], processed_dfs['daniil_jumping']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')
-ax6.plot(processed_dfs['daniil_jumping']['Time (s)'], processed_dfs['daniil_jumping']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
+# Daniil Jumping
+time_col = raw_dfs['daniil_jumping'].columns[0]
+abs_col  = raw_dfs['daniil_jumping'].columns[3]
+
+ax6.plot(raw_dfs['daniil_jumping'][time_col], raw_dfs['daniil_jumping'][abs_col], 'k-', alpha=0.7, label='Raw Abs-acceleration')    
+ax6.plot(processed_dfs['daniil_jumping'][time_col], processed_dfs['daniil_jumping'][abs_col], 'r-', label='Filtered Abs-acceleration')
 
 ax6.set_title('Daniil Jumping')
-ax6.set_xlabel('Time (s)')
-ax6.set_ylabel('Acceleration (m/s²)')
+ax6.set_xlabel(time_col)
+ax6.set_ylabel(abs_col)
 ax6.grid(True)
 ax6.legend()
-plt.tight_layout(rect=[0, 0, 1, 0.95])  # Make room for subtitle
 
-# Show all plots
+plt.tight_layout(rect=[0, 0, 1, 0.95])
 #endregion
+
 #region ---------------------------------SEGMENT DATA-----------------------------------------------
-#compute average sampling frequency for Lorenzo
-lorenzo_sampling_rate = 1 / processed_dfs['lorenzo_walking'].iloc[:, 0].diff().mean()
+def segment_data_5s(data, window_size):
+    """
+    Splits the data into segments of length 'window_size'.
+    Skips the time column automatically.
+    """
+    segments = []
+
+    # Identify time col to skip it
+    time_col = data.columns[0]
+    
+    # Use everything except time col
+    data_no_time = data.drop(columns=[time_col])
+
+    for i in range(0, len(data_no_time), window_size):
+        segment = data_no_time.iloc[i : i + window_size, :].values
+        if len(segment) == window_size:
+            segments.append(segment)
+    return np.array(segments)
+
+#compute average sampling frequency
+lorenzo_sampling_rate = 1 / processed_dfs['lorenzo_walking'][time_col].diff().mean()
+kaykay_sampling_rate = 1 / processed_dfs['kaykay_jumping'][time_col].diff().mean()
+daniil_sampling_rate = 1 / processed_dfs['daniil_jumping'][time_col].diff().mean()
+
 print(f"Lorenzo Estimated Sampling Frequency: {lorenzo_sampling_rate:.2f} Hz")
-
-#compute average sampling frequency for KayKay
-kaykay_sampling_rate = 1 / processed_dfs['kaykay_jumping'].iloc[:, 0].diff().mean()
 print(f"KayKay Estimated Sampling Frequency: {kaykay_sampling_rate:.2f} Hz")
-
-#compute average sampling frequency for Daniil
-daniil_sampling_rate = 1 / processed_dfs['daniil_jumping'].iloc[:, 0].diff().mean()
 print(f"Daniil Estimated Sampling Frequency: {daniil_sampling_rate:.2f} Hz")
 
 if (round(lorenzo_sampling_rate/50)*50) == (round(kaykay_sampling_rate/50)*50) == (round(daniil_sampling_rate/50)*50):
     official_sample_rate = (round(lorenzo_sampling_rate/50)*50)
 else:
     print("Sampling rates are not the same")
-    exit()
+
 print(f"Official Sample rate: {official_sample_rate}")
+window_size = int(5 * official_sample_rate)
 
-window_size=5*official_sample_rate
-
-def segment_data_5s(data, window_size):     
-    segments=[]
-    # Include all acceleration columns (x, y, z)
-    for i in range(0, len(data), window_size):
-        segment=data.iloc[i:i+window_size, 1:].values  # Get all columns except time
-        if len(segment) == window_size:
-            segments.append(segment)
-    
-    return np.array(segments)
-
-segmented_arrays={}
+segmented_arrays = {}
 for name, df in processed_dfs.items():
-    segmented_arrays[name]=segment_data_5s(df, window_size)
+    segmented_arrays[name] = segment_data_5s(df, window_size)
 
-# Print segment shapes to understand their dimensions
 print("Segment shapes:")
 for name, array in segmented_arrays.items():
     print(f"{name}: {array.shape}")
 #endregion
+
 #region ---------------------------------EXTRACT FEATURES-----------------------------------------------
-
-# Extract features for each segment (returns a dictionary of features)
-# Example of a segment: 
-# [[x1, y1, z1],
-#  [x2, y2, z2],
-#  ...
-#  [x500, y500, z500]]
-
-# Example of a features dictionary for a segment:
-# {
-#     "mean": [mean_x, mean_y, mean_z, mean_abs],
-#     "std": [std_x, std_y, std_z, std_abs],
-#     ...
-# }
 def extract_features(segment):
+    '''
+    Extract features from a segment of data.
+    '''
     features = {}
-    # Basic features
-    features["mean"] = np.mean(segment, axis=0) #Applies to each axis column in the segment (x,y,z)
+    features["mean"] = np.mean(segment, axis=0)
     features["std"] = np.std(segment, axis=0)
     features["min"] = np.min(segment, axis=0)
     features["max"] = np.max(segment, axis=0)
@@ -244,91 +245,88 @@ def extract_features(segment):
     features["rms"] = np.sqrt(np.mean(np.square(segment), axis=0))
     features["kurtosis"] = stats.kurtosis(segment, axis=0)
     features["skewness"] = stats.skew(segment, axis=0)
-
     return features
 
-# Extract features for each activity and person (Appends dictionary of features per segment to a list)
-features_arrays={}
-for name, array in segmented_arrays.items():
-    features_arrays[name]=[]
-    for segment in array:
-        features_arrays[name].append(extract_features(segment))
-
-# define feature names
 feature_names = [
-        'mean', 'std', 'min', 'max', 'range', 'variance', 
-        'median', 'rms', 'kurtosis', 'skewness'
-    ]
-# Function to create a DataFrame with clear column names (list of dictionaries -> list of rows -> dataframe)
+    'mean', 'std', 'min', 'max', 'range', 'variance',
+    'median', 'rms', 'kurtosis', 'skewness'
+]
 
 def features_to_dataframe(features_list):
-    # Define the axes
+    '''
+    Convert features list to a dataframe.
+    '''
     axes = ['x', 'y', 'z', 'abs']
     
-    # Create column names in the format feature_axis (mean_x, std_y, ...)
     columns = []
     for feature in feature_names:
         for axis in axes:
             columns.append(f"{feature}_{axis}")
     
-    # Create the data rows
-    data = [] # list of lists(rows)
-    for features in features_list: # iterates through each 5 second segment with feature data
+    data_rows = []
+    for feat_dict in features_list:
         row = []
-        for feature in feature_names: # adds data for each feature for each axis
-            row.extend(features[feature])
-        data.append(row)
+        for feature in feature_names:
+            row.extend(feat_dict[feature])
+        data_rows.append(row)
     
-    # Create and return the DataFrame
-    df = pd.DataFrame(data, columns=columns)
-    return df
+    return pd.DataFrame(data_rows, columns=columns)
 
-# Convert features to DataFrames with clear column names
-features_dfs={}
-for name, array in features_arrays.items():
-    features_dfs[name]=features_to_dataframe(array)
+# Extract features from each segment
+features_arrays = {}
+for name, array in segmented_arrays.items():
+    feats_for_name = []
+    for segment in array:
+        feats_for_name.append(extract_features(segment))
+    features_arrays[name] = feats_for_name
+
+# Convert features list to a dataframe
+features_dfs = {}
+for name, feat_list in features_arrays.items():
+    features_dfs[name] = features_to_dataframe(feat_list)
+
+# Save the feature DataFrame to CSV
+for name, df in features_dfs.items():
+    out_file = os.path.join('segmented', f'{name}_segmented.csv')
+    df.to_csv(out_file, index=False)
+    print(f"✅ Segmented data saved: {out_file}")
 #endregion
-#region ---------------------------------NORMALIZE FEATURES-----------------------------------------------
 
-# Convert features directly to final format without normalization
-features_dfs_final = features_dfs
-
-# Save features to CSV files with clear headers
-for name, df in features_dfs_final.items():
-    df.to_csv(os.path.join('segmented', f'{name}_segmented.csv'), index=False)
-    print(f"✅ Segmented data saved: {name}")
-#endregion
 #region ---------------------------------CREATE FINAL DATASET-----------------------------------------------
-
-# Create final dataset with activity column (0 for walking, 1 for jumping) and concatenate all dataframes
 final_dataset = pd.DataFrame()
-for name, df in features_dfs_final.items():
-    if (name.split('_')[-1]=='walking'):
-        df['activity'] = 0
-    elif name.split('_')[-1] == 'jumping':
-        df['activity'] = 1
+for name, df in features_dfs.items():
+    activity_label = 0 if name.endswith('walking') else 1  # If not walking, assume jumping
+    df['activity'] = activity_label
     final_dataset = pd.concat([final_dataset, df], axis=0, ignore_index=True)
 
 print(f"Final dataset shape: {final_dataset.shape}")  # (rows, columns)
 #endregion
-#region ---------------------------------TRAIN LOGISTIC REGRESSION-----------------------------------------------
-final_data = final_dataset.iloc[:,:-1]
-final_labels = final_dataset.iloc[:,-1]
-# 10% of data for testing, 90% for training
-X_train, X_test, y_train, y_test = \
-    train_test_split(final_data, final_labels, test_size=0.1, shuffle=True, random_state=0) 
 
-# Store training and testing data in HDF5
+#region ---------------------------------SPECIFY WHICH AXIS TO TRAIN WITH-----------------------------------------------
+# Filter columns to only include abs-acceleration related features
+
+abs_cols = [col for col in final_dataset.columns if 'abs' in col.lower() and col != 'activity']
+print(f"Absolute acceleration features being used: {abs_cols}")
+final_dataset = final_dataset[abs_cols + ['activity']]
+#endregion
+
+#region ---------------------------------TRAIN LOGISTIC REGRESSION-----------------------------------------------
+# Separate features (only abs) and labels
+final_data = final_dataset.drop('activity', axis=1)
+final_labels = final_dataset['activity']
+
+# 10% test, 90% train
+X_train, X_test, y_train, y_test = train_test_split(
+    final_data, final_labels, test_size=0.1, shuffle=True, random_state=0
+)
+
 with h5py.File("dataset.h5", "a") as f:
-    # Store training data
     f["Segmented Data/Train/X"] = X_train.values
     f["Segmented Data/Train/y"] = y_train.values
     
-    # Store testing data
     f["Segmented Data/Test/X"] = X_test.values
     f["Segmented Data/Test/y"] = y_test.values
     
-    # Store feature names for reference
     f["Segmented Data/feature_names"] = list(final_data.columns)
     f["Segmented Data/num_features"] = len(final_data.columns)
 
@@ -336,68 +334,85 @@ print(f"Number of features (columns) being used: {len(final_data.columns)}")
 print(f"Training set shape: {X_train.shape}")
 print(f"Testing set shape: {X_test.shape}")
 
+#train and normalize data using pipeline and standard scaler
 l_reg = LogisticRegression(max_iter=10000)
 clf = make_pipeline(StandardScaler(), l_reg)
 clf.fit(X_train, y_train)
-joblib.dump(clf, "activity_classifier.pkl")
 
+joblib.dump(clf, "activity_classifier.pkl")
 
 predictions = clf.predict(X_test)
 clf_probs = clf.predict_proba(X_test)
 acc = accuracy_score(y_test, predictions)
 recall = recall_score(y_test, predictions)
-print(f"Predictions: {predictions}") # 0 for walking, 1 for jumping
-print(f"Probabilities: {clf_probs}") # probability of being 0 or 1
-print(f"Accuracy: {acc}") # percentage of correct predictions
-print(f"Recall: {recall}") # percentage of true positives
+
+print(f"Predictions: {predictions}")
+print(f"Probabilities: {clf_probs}")
+print(f"Accuracy: {acc}")
+print(f"Recall: {recall}")
 
 cm = confusion_matrix(y_test, predictions)
-cm_display = ConfusionMatrixDisplay(cm).plot()
+ConfusionMatrixDisplay(cm).plot()
 
-fpr, tpr, thresholds = roc_curve(y_test, clf_probs[:,1], pos_label=clf.classes_[1])
-roc_display= RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
-auc = roc_auc_score(y_test, clf_probs[:,1])
-print(f"AUC: {auc}")
-# Compute correlation between each feature and 'activity' (jumping=1, walking=0)
+fpr, tpr, thresholds = roc_curve(y_test, clf_probs[:, 1], pos_label=clf.classes_[1])
+RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
+auc = roc_auc_score(y_test, clf_probs[:, 1])
+print(f"AUC: {auc}\n")
+
+# Correlation of final abs-only dataset
 correlation = final_dataset.corr()['activity'].sort_values(ascending=False)
 print(correlation)
-print(final_dataset.describe())
-
 #endregion
-# region ---------------------------------PLOT SEGMENTED DATA----------------------------------------------- 
-# Plot first 5-second segments of Lorenzo's and KayKay's segmented data
-fig_lorenzo_seg, axes = plt.subplots(1, 2, figsize=(15, 5))
-fig_lorenzo_seg.suptitle('Lorenzo\'s Segmented Data (first 5 seconds)', fontsize=16)
-# Create a time axis for a single 5-second segment
-time_axis = np.linspace(0, 5, int(window_size), endpoint=False)  # From 0 to 5 seconds
 
-# Flatten axes array
+#region ---------------------------------PLOT CORRELATION BAR GRAPH-----------------------------------------------
+fig_correlation, ax = plt.subplots(figsize=(15, 8))
+ax.bar(correlation.index, correlation.values)
+
+ax.set_title('Correlation Between ABS Features and Activity', fontsize=14)
+ax.set_xlabel('Features', fontsize=12)
+ax.set_ylabel('Correlation', fontsize=12)
+
+plt.xticks(rotation=90, ha='right', fontsize=10)
+plt.yticks(fontsize=10)
+plt.tight_layout()
+#endregion
+
+#region ---------------------------------PLOT SEGMENTED DATA-----------------------------------------------
+# Example: Plot first 5-second segments of Lorenzo's walking vs jumping
+# In 'segmented_arrays', columns: 0->x,1->y,2->z,3->abs
+time_axis = np.linspace(0, 5, int(window_size), endpoint=False)
+
+fig_lorenzo_seg, axes = plt.subplots(1, 2, figsize=(15, 5))
+fig_lorenzo_seg.suptitle('Lorenzo\'s Segmented Data Example (first 5 second segment)', fontsize=16)
 ax1, ax2 = axes.flatten()
 
-# Plot Lorenzo Walking segmented data with all acceleration axes
-ax1.plot(time_axis, segmented_arrays['lorenzo_walking'][0, :, 0], 'r-', label='X-axis')
-ax1.plot(time_axis, segmented_arrays['lorenzo_walking'][0, :, 1], 'b-', label='Y-axis')
-ax1.plot(time_axis, segmented_arrays['lorenzo_walking'][0, :, 2], 'y-', label='Z-axis')
+# Lorenzo walking
+lorenzo_walk = segmented_arrays['lorenzo_walking'][0]  # First segment
+ax1.plot(time_axis, lorenzo_walk[:, 0], 'r-', label='X-axis')
+ax1.plot(time_axis, lorenzo_walk[:, 1], 'b-', label='Y-axis')
+ax1.plot(time_axis, lorenzo_walk[:, 2], 'y-', label='Z-axis')
+ax1.plot(time_axis, lorenzo_walk[:, 3], 'k-', label='Absolute')
 ax1.set_title('Lorenzo Walking')
 ax1.set_xlabel('Time (s)')
 ax1.set_ylabel('Acceleration (m/s²)')
 ax1.legend()
 ax1.grid(True)
 
-# Plot Lorenzo Jumping segmented data with all acceleration axes
-ax2.plot(time_axis, segmented_arrays['lorenzo_jumping'][0, :, 0], 'r-', label='X-axis')
-ax2.plot(time_axis, segmented_arrays['lorenzo_jumping'][0, :, 1], 'b-', label='Y-axis')
-ax2.plot(time_axis, segmented_arrays['lorenzo_jumping'][0, :, 2], 'y-', label='Z-axis')
+# Lorenzo jumping
+lorenzo_jump = segmented_arrays['lorenzo_jumping'][0]  # First segment
+ax2.plot(time_axis, lorenzo_jump[:, 0], 'r-', label='X-axis')
+ax2.plot(time_axis, lorenzo_jump[:, 1], 'b-', label='Y-axis')
+ax2.plot(time_axis, lorenzo_jump[:, 2], 'y-', label='Z-axis')
+ax2.plot(time_axis, lorenzo_jump[:, 3], 'k-', label='Absolute')
 ax2.set_title('Lorenzo Jumping')
 ax2.set_xlabel('Time (s)')
 ax2.set_ylabel('Acceleration (m/s²)')
 ax2.legend()
 ax2.grid(True)
 
-# Adjust layout
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 plt.show()
-#endregion  
+#endregion
 
 joblib.dump(clf, 'activity_classifier.pkl')
-print("Model saved as activity_classifier.pkl")
+print("✅Model saved as activity_classifier.pkl")

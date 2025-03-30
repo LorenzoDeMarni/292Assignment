@@ -18,7 +18,7 @@ window_size=500
 def extract_features(segment):
     features = {}
     # Basic features
-    features["mean"] = np.mean(segment, axis=0)  # Applies to each axis column in the segment (x,y,z)
+    features["mean"] = np.mean(segment, axis=0)
     features["std"] = np.std(segment, axis=0)
     features["min"] = np.min(segment, axis=0)
     features["max"] = np.max(segment, axis=0)
@@ -101,6 +101,10 @@ def open_csv():
             features=extract_features(seg)
             featureslist.append(features)
         feature_df=features_to_dataframe(featureslist)
+        abs_cols = [col for col in feature_df.columns if 'abs' in col.lower()]
+        feature_df = feature_df[abs_cols]
+
+
         predictions=model.predict(feature_df)
         labels=[]
         for p in predictions:
@@ -113,11 +117,9 @@ def open_csv():
         walking_count = (predictions == 0).sum()
         output_df = pd.DataFrame({'Segment': range(len(labels)), 'Prediction': labels})
         output_df["Segment"] = output_df["Segment"].astype(str)  # Convert entire column to string
+        #insert final classification before first row
         output_df.loc[len(output_df)] = ['Final Classification', 'Jumping' if jumping_count > walking_count else 'Walking']
-
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        output_file = os.path.join(script_dir, "classification_results.csv")
-        output_df.to_csv(output_file, index=False)
+        
         # Clear previous predictions and display new ones
         predictions_text.delete(1.0, END)
         for i, row in output_df.iterrows():

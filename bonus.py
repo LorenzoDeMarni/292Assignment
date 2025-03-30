@@ -34,7 +34,6 @@ window_size = 20
 def extract_features(segment):
     features = {}
     segment = segment.astype(float)  # Ensure numeric type
-    
     # Basic features
     features["mean"] = np.mean(segment, axis=0)
     features["std"] = np.std(segment, axis=0)
@@ -100,24 +99,26 @@ while True:
     # Check if dataset reached the required window size
     if len(dataset) >= window_size:
         segments = segment_data_5s(dataset, window_size)
-
         if len(segments) == 0:
             print("Warning: No valid segments created!")
             continue
-
+        
         features_list = [extract_features(seg) for seg in segments]
-
         if len(features_list) == 0:
             print("Warning: No features extracted!")
             continue
-
-        features_df = features_to_dataframe(features_list)
-
-        if features_df.empty:
+        
+        #feature extraction
+        feature_df=features_to_dataframe(features_list)
+        # only use absolute acceleration features
+        abs_cols = [col for col in feature_df.columns if 'abs' in col.lower()]
+        feature_df = feature_df[abs_cols]
+        if feature_df.empty:
             print("Warning: Features DataFrame is empty!")
             continue
+        
         # Predict the activity
-        predictions = model.predict(features_df)
+        predictions = model.predict(feature_df)
         labels = ["walking" if p == 0 else "jumping" for p in predictions]
         # Count occurrences
         jumping_count = (predictions == 1).sum()

@@ -57,7 +57,6 @@ with h5py.File("dataset.h5", "a") as f:
         f[f"Raw Data/{person}/{activity}"] = df.values
 #endregion
 
-
 #region ------------------------------PROCESS RAW DATA AND STORE IN HDF5-----------------------------------------------
 def preprocess_dataframe(df, window_size=51):
     """
@@ -181,6 +180,7 @@ ax6.grid(True)
 ax6.legend()
 
 plt.tight_layout(rect=[0, 0, 1, 0.95])
+plt.show()
 #endregion
 
 #region ---------------------------------SEGMENT DATA-----------------------------------------------
@@ -227,6 +227,47 @@ for name, df in processed_dfs.items():
 print("Segment shapes:")
 for name, array in segmented_arrays.items():
     print(f"{name}: {array.shape}")
+#endregion
+
+#region ---------------------------------PLOT SEGMENTED DATA EXAMPLE (Second Segment)-----------------------------------------------
+# Example: Plot second 5-second segments for all users walking vs jumping
+# In 'segmented_arrays', columns: 0->x,1->y,2->z,3->abs
+time_axis = np.linspace(0, 5, int(window_size), endpoint=False)
+
+fig_lorenzo_seg, axes = plt.subplots(1, 2, figsize=(15, 5))
+fig_lorenzo_seg.suptitle('Segmented Data Example (2nd 5s segment)', fontsize=16)
+ax1, ax2 = axes.flatten()
+
+# Lorenzo walking
+lorenzo_walk = segmented_arrays['lorenzo_walking'][2]
+kaykay_walk = segmented_arrays['kaykay_walking'][2]
+daniil_walk = segmented_arrays['daniil_walking'][2] 
+
+ax1.plot(time_axis, lorenzo_walk[:, 3], 'k-', label='Lorenzo')
+ax1.plot(time_axis, kaykay_walk[:, 3], 'b-', label='KayKay')
+ax1.plot(time_axis, daniil_walk[:, 3], 'r-', label='Daniil')
+ax1.set_title('Walking Absolute Acceleration')
+ax1.set_xlabel('Time (s)')
+ax1.set_ylabel('Acceleration (m/s²)')
+ax1.legend()
+ax1.grid(True)
+
+# Lorenzo jumping
+lorenzo_jump = segmented_arrays['lorenzo_jumping'][2]  
+kaykay_jump = segmented_arrays['kaykay_jumping'][2]  
+daniil_jump = segmented_arrays['daniil_jumping'][2]  
+
+ax2.plot(time_axis, lorenzo_jump[:, 3], 'k-', label='Lorenzo')
+ax2.plot(time_axis, kaykay_jump[:, 3], 'b-', label='KayKay')
+ax2.plot(time_axis, daniil_jump[:, 3], 'r-', label='Daniil')
+ax2.set_title('Jumping Absolute Acceleration')
+ax2.set_xlabel('Time (s)')
+ax2.set_ylabel('Acceleration (m/s²)')
+ax2.legend()
+ax2.grid(True)
+
+plt.tight_layout(rect=[0, 0, 1, 0.95])
+plt.show()
 #endregion
 
 #region ---------------------------------EXTRACT FEATURES-----------------------------------------------
@@ -353,9 +394,13 @@ print(f"Recall: {recall}")
 
 cm = confusion_matrix(y_test, predictions)
 ConfusionMatrixDisplay(cm).plot()
+plt.title('Confusion Matrix')
+plt.show()
 
 fpr, tpr, thresholds = roc_curve(y_test, clf_probs[:, 1], pos_label=clf.classes_[1])
 RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
+plt.title('ROC Curve')
+plt.show()
 auc = roc_auc_score(y_test, clf_probs[:, 1])
 print(f"AUC: {auc}\n")
 
@@ -375,44 +420,10 @@ ax.set_ylabel('Correlation', fontsize=12)
 plt.xticks(rotation=90, ha='right', fontsize=10)
 plt.yticks(fontsize=10)
 plt.tight_layout()
-#endregion
-
-#region ---------------------------------PLOT SEGMENTED DATA-----------------------------------------------
-# Example: Plot first 5-second segments of Lorenzo's walking vs jumping
-# In 'segmented_arrays', columns: 0->x,1->y,2->z,3->abs
-time_axis = np.linspace(0, 5, int(window_size), endpoint=False)
-
-fig_lorenzo_seg, axes = plt.subplots(1, 2, figsize=(15, 5))
-fig_lorenzo_seg.suptitle('Lorenzo\'s Segmented Data Example (first 5 second segment)', fontsize=16)
-ax1, ax2 = axes.flatten()
-
-# Lorenzo walking
-lorenzo_walk = segmented_arrays['lorenzo_walking'][0]  # First segment
-ax1.plot(time_axis, lorenzo_walk[:, 0], 'r-', label='X-axis')
-ax1.plot(time_axis, lorenzo_walk[:, 1], 'b-', label='Y-axis')
-ax1.plot(time_axis, lorenzo_walk[:, 2], 'y-', label='Z-axis')
-ax1.plot(time_axis, lorenzo_walk[:, 3], 'k-', label='Absolute')
-ax1.set_title('Lorenzo Walking')
-ax1.set_xlabel('Time (s)')
-ax1.set_ylabel('Acceleration (m/s²)')
-ax1.legend()
-ax1.grid(True)
-
-# Lorenzo jumping
-lorenzo_jump = segmented_arrays['lorenzo_jumping'][0]  # First segment
-ax2.plot(time_axis, lorenzo_jump[:, 0], 'r-', label='X-axis')
-ax2.plot(time_axis, lorenzo_jump[:, 1], 'b-', label='Y-axis')
-ax2.plot(time_axis, lorenzo_jump[:, 2], 'y-', label='Z-axis')
-ax2.plot(time_axis, lorenzo_jump[:, 3], 'k-', label='Absolute')
-ax2.set_title('Lorenzo Jumping')
-ax2.set_xlabel('Time (s)')
-ax2.set_ylabel('Acceleration (m/s²)')
-ax2.legend()
-ax2.grid(True)
-
-plt.tight_layout(rect=[0, 0, 1, 0.95])
 plt.show()
 #endregion
+
+
 
 joblib.dump(clf, 'activity_classifier.pkl')
 print("✅Model saved as activity_classifier.pkl")

@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import accuracy_score, recall_score, confusion_matrix, ConfusionMatrixDisplay, roc_curve, RocCurveDisplay, roc_auc_score
+import joblib
 
 #region ---------------------------------CREATE HDF5 FILE-----------------------------------------------
 # Create h5py file for organization
@@ -90,17 +91,19 @@ with h5py.File("dataset.h5", "a") as f:
 #endregion
 #region ---------------------------------PLOT DATA (RAW vs FILTERED)-----------------------------------------------
 # Figure 1: Lorenzo's data (walking and jumping in one window)
-fig_lorenzo, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-fig_lorenzo.suptitle('Lorenzo Data - Acceleration Processing', fontsize=16)
+fig_lorenzo, axes = plt.subplots(3, 2, figsize=(20, 10))
+ax1, ax2, ax3, ax4, ax5, ax6 = axes.flatten()
+
+fig_lorenzo.suptitle('Acceleration Processing', fontsize=16)
 
 # Plot Lorenzo Walking acceleration data
 ax1.plot(raw_dfs['lorenzo_walking']['Time (s)'], raw_dfs['lorenzo_walking']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
-ax1.plot(raw_dfs['lorenzo_walking']['Time (s)'], raw_dfs['lorenzo_walking']['Linear Acceleration y (m/s^2)'], 'k-', alpha=0.7, label='Raw Y-axis')
-ax1.plot(raw_dfs['lorenzo_walking']['Time (s)'], raw_dfs['lorenzo_walking']['Linear Acceleration z (m/s^2)'], 'k-', alpha=0.7, label='Raw Z-axis')
+ax1.plot(raw_dfs['lorenzo_walking']['Time (s)'], raw_dfs['lorenzo_walking']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
+ax1.plot(raw_dfs['lorenzo_walking']['Time (s)'], raw_dfs['lorenzo_walking']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
 ax1.plot(processed_dfs['lorenzo_walking']['Time (s)'], processed_dfs['lorenzo_walking']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
-ax1.plot(processed_dfs['lorenzo_walking']['Time (s)'], processed_dfs['lorenzo_walking']['Linear Acceleration y (m/s^2)'], 'b-', label='Filtered Y-axis')
+ax1.plot(processed_dfs['lorenzo_walking']['Time (s)'], processed_dfs['lorenzo_walking']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')
 ax1.plot(processed_dfs['lorenzo_walking']['Time (s)'], processed_dfs['lorenzo_walking']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
-ax1.set_title('Walking')
+ax1.set_title('Lorenzo Walking')
 ax1.set_xlabel('Time (s)')
 ax1.set_ylabel('Acceleration (m/s²)')
 ax1.grid(True)
@@ -108,17 +111,66 @@ ax1.legend()
 
 # Plot Lorenzo Jumping acceleration data
 ax2.plot(raw_dfs['lorenzo_jumping']['Time (s)'], raw_dfs['lorenzo_jumping']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
-ax2.plot(raw_dfs['lorenzo_jumping']['Time (s)'], raw_dfs['lorenzo_jumping']['Linear Acceleration y (m/s^2)'], 'k-', alpha=0.7, label='Raw Y-axis')
-ax2.plot(raw_dfs['lorenzo_jumping']['Time (s)'], raw_dfs['lorenzo_jumping']['Linear Acceleration z (m/s^2)'], 'k-', alpha=0.7, label='Raw Z-axis')
+ax2.plot(raw_dfs['lorenzo_jumping']['Time (s)'], raw_dfs['lorenzo_jumping']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
+ax2.plot(raw_dfs['lorenzo_jumping']['Time (s)'], raw_dfs['lorenzo_jumping']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
 ax2.plot(processed_dfs['lorenzo_jumping']['Time (s)'], processed_dfs['lorenzo_jumping']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
-ax2.plot(processed_dfs['lorenzo_jumping']['Time (s)'], processed_dfs['lorenzo_jumping']['Linear Acceleration y (m/s^2)'], 'b-', label='Filtered Y-axis')
+ax2.plot(processed_dfs['lorenzo_jumping']['Time (s)'], processed_dfs['lorenzo_jumping']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')
 ax2.plot(processed_dfs['lorenzo_jumping']['Time (s)'], processed_dfs['lorenzo_jumping']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
-ax2.set_title('Jumping')
+ax2.set_title('Lorenzo Jumping')
 ax2.set_xlabel('Time (s)')
 ax2.set_ylabel('Acceleration (m/s²)')
 ax2.grid(True)
 ax2.legend()
 
+ax3.plot(raw_dfs['kaykay_walking']['Time (s)'], raw_dfs['kaykay_walking']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
+ax3.plot(raw_dfs['kaykay_walking']['Time (s)'], raw_dfs['kaykay_walking']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
+ax3.plot(raw_dfs['kaykay_walking']['Time (s)'], raw_dfs['kaykay_walking']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
+ax3.plot(processed_dfs['kaykay_walking']['Time (s)'], processed_dfs['kaykay_walking']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
+ax3.plot(processed_dfs['kaykay_walking']['Time (s)'], processed_dfs['kaykay_walking']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')
+ax3.plot(processed_dfs['kaykay_walking']['Time (s)'], processed_dfs['kaykay_walking']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
+ax3.set_title('KayKay Walking')    
+ax3.set_xlabel('Time (s)')
+ax3.set_ylabel('Acceleration (m/s²)')
+ax3.grid(True)
+ax3.legend()    
+
+ax4.plot(raw_dfs['kaykay_jumping']['Time (s)'], raw_dfs['kaykay_jumping']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
+ax4.plot(raw_dfs['kaykay_jumping']['Time (s)'], raw_dfs['kaykay_jumping']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
+ax4.plot(raw_dfs['kaykay_jumping']['Time (s)'], raw_dfs['kaykay_jumping']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
+ax4.plot(processed_dfs['kaykay_jumping']['Time (s)'], processed_dfs['kaykay_jumping']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
+ax4.plot(processed_dfs['kaykay_jumping']['Time (s)'], processed_dfs['kaykay_jumping']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')  
+ax4.plot(processed_dfs['kaykay_jumping']['Time (s)'], processed_dfs['kaykay_jumping']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
+ax4.set_title('KayKay Jumping')
+ax4.set_xlabel('Time (s)')
+ax4.set_ylabel('Acceleration (m/s²)')
+ax4.grid(True)
+ax4.legend()
+
+ax5.plot(raw_dfs['daniil_walking']['Time (s)'], raw_dfs['daniil_walking']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
+ax5.plot(raw_dfs['daniil_walking']['Time (s)'], raw_dfs['daniil_walking']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
+ax5.plot(raw_dfs['daniil_walking']['Time (s)'], raw_dfs['daniil_walking']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
+ax5.plot(processed_dfs['daniil_walking']['Time (s)'], processed_dfs['daniil_walking']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
+ax5.plot(processed_dfs['daniil_walking']['Time (s)'], processed_dfs['daniil_walking']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')
+ax5.plot(processed_dfs['daniil_walking']['Time (s)'], processed_dfs['daniil_walking']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
+
+ax5.set_title('Daniil Walking')
+ax5.set_xlabel('Time (s)')
+ax5.set_ylabel('Acceleration (m/s²)')
+ax5.grid(True)  
+ax5.legend()
+
+ax6.plot(raw_dfs['daniil_jumping']['Time (s)'], raw_dfs['daniil_jumping']['Linear Acceleration x (m/s^2)'], 'k-', alpha=0.7, label='Raw X-axis')
+ax6.plot(raw_dfs['daniil_jumping']['Time (s)'], raw_dfs['daniil_jumping']['Linear Acceleration y (m/s^2)'], 'g-', alpha=0.7, label='Raw Y-axis')
+ax6.plot(raw_dfs['daniil_jumping']['Time (s)'], raw_dfs['daniil_jumping']['Linear Acceleration z (m/s^2)'], 'b-', alpha=0.7, label='Raw Z-axis')
+ax6.plot(processed_dfs['daniil_jumping']['Time (s)'], processed_dfs['daniil_jumping']['Linear Acceleration x (m/s^2)'], 'r-', label='Filtered X-axis')
+ax6.plot(processed_dfs['daniil_jumping']['Time (s)'], processed_dfs['daniil_jumping']['Linear Acceleration y (m/s^2)'], 'c-', label='Filtered Y-axis')
+ax6.plot(processed_dfs['daniil_jumping']['Time (s)'], processed_dfs['daniil_jumping']['Linear Acceleration z (m/s^2)'], 'y-', label='Filtered Z-axis')
+
+ax6.set_title('Daniil Jumping')
+ax6.set_xlabel('Time (s)')
+ax6.set_ylabel('Acceleration (m/s²)')
+ax6.grid(True)
+ax6.legend()
 plt.tight_layout(rect=[0, 0, 1, 0.95])  # Make room for subtitle
 
 # Show all plots
@@ -287,6 +339,8 @@ print(f"Testing set shape: {X_test.shape}")
 l_reg = LogisticRegression(max_iter=10000)
 clf = make_pipeline(StandardScaler(), l_reg)
 clf.fit(X_train, y_train)
+joblib.dump(clf, "activity_classifier.pkl")
+
 
 predictions = clf.predict(X_test)
 clf_probs = clf.predict_proba(X_test)

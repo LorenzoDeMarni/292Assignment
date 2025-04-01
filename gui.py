@@ -7,6 +7,9 @@ import os
 from scipy import stats
 from tkinter import Frame, Canvas, BOTH, LEFT, RIGHT, VERTICAL
 from tkinter import ttk
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.patches import Patch  # ADD THIS to your imports at the top
 
 # load the trained model
 model = joblib.load("activity_classifier.pkl")
@@ -88,46 +91,111 @@ def popup(output_df):
         text.insert(END, f"Segment {row['Segment']}: {row['Prediction']}\n")
 
 def open_csv():
-    csv_file_path=filedialog.askopenfilename(filetypes=[("CSV files","*.csv")])
+    csv_file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
     if not csv_file_path:
-        return
+        return  # If no file is selected, exit the function
+
     try:
-        #reads selected csv
-        df=pd.read_csv(csv_file_path)
-        #passes through the trained model
-        segment=segment_data_5s(df,window_size)
-        featureslist=[]
-        for seg in segment:
-            features=extract_features(seg)
-            featureslist.append(features)
-        feature_df=features_to_dataframe(featureslist)
+        # Read the selected CSV
+        df = pd.read_csv(csv_file_path)
+
+        # Segment data
+        segments = segment_data_5s(df, window_size)
+        if len(segments) == 0:
+            messagebox.showerror("Error", "The selected CSV file does not contain enough data for segmentation.")
+            return
+
+        # Extract features
+        features_list = []
+        for seg in segments:
+            features = extract_features(seg)
+            features_list.append(features)
+
+        if not features_list:
+            messagebox.showerror("Error", "No features were extracted. Ensure the CSV has valid acceleration data.")
+            return
+
+        # Convert to DataFrame
+        feature_df = features_to_dataframe(features_list)
         abs_cols = [col for col in feature_df.columns if 'abs' in col.lower()]
         feature_df = feature_df[abs_cols]
 
+        # Make predictions
+        predictions = model.predict(feature_df)
+        labels = ["walking" if p == 0 else "jumping" for p in predictions]
 
-        predictions=model.predict(feature_df)
-        labels=[]
-        for p in predictions:
-            if p==0:
-                labels.append("walking")
-            else:
-                labels.append("jumping")
-        # final classification
+        # Count classifications
         jumping_count = (predictions == 1).sum()
         walking_count = (predictions == 0).sum()
-        output_df = pd.DataFrame({'Segment': range(len(labels)), 'Prediction': labels})
-        output_df["Segment"] = output_df["Segment"].astype(str)  # Convert entire column to string
-        #insert final classification before first row
-        output_df.loc[len(output_df)] = ['Final Classification', 'Jumping' if jumping_count > walking_count else 'Walking']
-        
-        # Clear previous predictions and display new ones
-        predictions_text.delete(1.0, END)
-        for i, row in output_df.iterrows():
-            predictions_text.insert(END, f"Segment {row['Segment']}: {row['Prediction']}\n")
-            
-    except Exception as e:
-        messagebox.showerror("Error", str(e))
 
+        # Calculate time ranges for each segment
+        time_ranges = []
+        for i in range(len(labels)):
+            start_time = i * 5  # Each segment is 5 seconds
+            end_time = (i + 1) * 5
+            time_ranges.append(f"{start_time}-{end_time}s")
+
+        # Create output DataFrame
+        output_df = pd.DataFrame({
+            'Segment': range(len(labels)),
+            'Time Range': time_ranges,
+            'Prediction': labels
+        })
+        output_df["Segment"] = output_df["Segment"].astype(str)  # Convert to string for proper display
+        output_df.loc[len(output_df)] = ['Majority Classification', 'Total Time', 'Jumping' if jumping_count > walking_count else 'Walking']
+        plot_raw_data_with_classification(df, labels)
+
+        # Update predictions display
+        predictions_text.config(state=tk.NORMAL)  # Ensure it's editable
+        predictions_text.delete(1.0, END)  # Clear previous predictions
+        for i, row in output_df.iterrows():
+            if row['Segment'] == 'Final Classification':
+                predictions_text.insert(END, f"{row['Segment']}: {row['Prediction']}\n")
+            else:
+                predictions_text.insert(END, f"Segment {row['Segment']} ({row['Time Range']}): {row['Prediction']}\n")
+        predictions_text.config(state=tk.DISABLED)  # Disable editing after updating
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to process file: {str(e)}")
+
+def plot_raw_data_with_classification(df, labels):
+    try:
+        # Compute absolute acceleration
+        df['abs'] = df['Absolute acceleration (m/s^2)']
+
+        # Create the figure
+        fig = Figure(figsize=(15, 6), dpi=100)
+        ax = fig.add_subplot(111)
+        ax.plot(df['abs'].values, label='Abs Acceleration', color='black')
+
+        # Highlight each segment
+        for i, label in enumerate(labels):
+            start_idx = i * window_size
+            end_idx = (i + 1) * window_size
+            color = '#3498db' if label == 'walking' else '#e74c3c'
+            ax.axvspan(start_idx, end_idx, facecolor=color, alpha=0.3)
+
+        ax.set_title("Raw Absolute Acceleration with Activity Highlighted")
+        ax.set_xlabel("Sample Index")
+        ax.set_ylabel("Absolute Acceleration")
+
+        # Add legend for the colors
+        legend_elements = [
+            Patch(facecolor='#3498db', edgecolor='black', label='Walking'),
+            Patch(facecolor='#e74c3c', edgecolor='black', label='Jumping'),
+            Patch(facecolor='black', label='Absolute Acceleration', linewidth=2)
+        ]
+        ax.legend(handles=legend_elements)
+
+        # Create popup window to show plot
+        plot_window = Toplevel(root)
+        plot_window.title("Acceleration Plot with Predictions")
+        canvas = FigureCanvasTkAgg(fig, master=plot_window)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+    except Exception as e:
+        messagebox.showerror("Plot Error", f"Could not plot data: {str(e)}")
 #GUI
 root=tk.Tk()
 root.configure(bg="#1a1f2c")  # Dark blue background

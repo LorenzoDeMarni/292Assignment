@@ -346,9 +346,22 @@ print(f"Final dataset shape: {final_dataset.shape}")  # (rows, columns)
 #region ---------------------------------SPECIFY WHICH AXIS TO TRAIN WITH-----------------------------------------------
 # Filter columns to only include abs-acceleration related features
 
-abs_cols = [col for col in final_dataset.columns if 'abs' in col.lower() and col != 'activity']
-print(f"Absolute acceleration features being used: {abs_cols}")
-final_dataset = final_dataset[abs_cols + ['activity']]
+# Exclude the 'activity' column from feature extraction
+feature_columns = final_dataset.columns[:-1]
+num_axes = 4  # x, y, z, abs
+
+# Use modulus to extract each axis's features
+x_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 0]
+y_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 1]
+z_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 2]
+abs_cols = [col for i, col in enumerate(feature_columns) if i % num_axes == 3]
+
+print("X features:", x_cols)
+print("Y features:", y_cols)
+print("Z features:", z_cols)
+print("Abs features:", abs_cols)
+
+final_dataset = final_dataset[x_cols + y_cols + z_cols + abs_cols + ['activity']]
 #endregion
 
 #region ---------------------------------TRAIN LOGISTIC REGRESSION-----------------------------------------------

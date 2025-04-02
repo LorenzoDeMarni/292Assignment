@@ -10,7 +10,7 @@ from tkinter import ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.patches import Patch  # ADD THIS to your imports at the top
-
+from sklearn.preprocessing import StandardScaler
 # load the trained model
 model = joblib.load("activity_classifier.pkl")
 
@@ -31,6 +31,8 @@ def extract_features(segment):
     features["rms"] = np.sqrt(np.mean(np.square(segment), axis=0))
     features["kurtosis"] = stats.kurtosis(segment, axis=0)
     features["skewness"] = stats.skew(segment, axis=0)
+
+
 
     return features
 
@@ -66,8 +68,17 @@ def features_to_dataframe(features_list):
 #function segmentation
 def segment_data_5s(data, window_size):
     segments = []
-    for i in range(0, len(data), window_size):
-        segment = data.iloc[i:i + window_size, 1:].values
+    
+    # Attempt to identify time column (usually first column)
+    if "Time" in data.columns or "time" in data.columns:
+        time_col = next(col for col in data.columns if "time" in col.lower())
+        data_no_time = data.drop(columns=[time_col])
+    else:
+        # Default: assume first column is time
+        data_no_time = data.iloc[:, 1:]
+    
+    for i in range(0, len(data_no_time), window_size):
+        segment = data_no_time.iloc[i:i + window_size, :].values
         if len(segment) == window_size:
             segments.append(segment)
 
@@ -117,8 +128,22 @@ def open_csv():
 
         # Convert to DataFrame
         feature_df = features_to_dataframe(features_list)
-        abs_cols = [col for col in feature_df.columns if 'abs' in col.lower()]
-        feature_df = feature_df[abs_cols]
+        # Exclude the 'activity' column from feature extraction
+        feature_columns = feature_df.columns[:]
+        num_axes = 4  # x, y, z, abs
+
+        # Use modulus to extract each axis's features
+        x_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 0]
+        y_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 1]
+        z_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 2]
+        abs_cols = [col for i, col in enumerate(feature_columns) if i % num_axes == 3]
+        print(f"X acceleration features being used: {x_cols}")
+        print(f"Y acceleration features being used: {y_cols}")
+        print(f"Z acceleration features being used: {z_cols}")
+        print(f"Absolute acceleration features being used: {abs_cols}")
+        
+        feature_df = feature_df[x_cols + y_cols + z_cols + abs_cols]
+        # print(feature_df)
 
         # Make predictions
         predictions = model.predict(feature_df)

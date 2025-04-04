@@ -49,8 +49,10 @@ def extract_features(segment):
     return features
 
 # Define feature names
-feature_names = ['mean', 'std', 'min', 'max', 'range', 'variance', 'median', 'rms', 'kurtosis', 'skewness']
-
+feature_names = [
+    'mean', 'std', 'min', 'max', 'range', 'variance',
+    'median', 'rms', 'kurtosis', 'skewness'
+]
 def features_to_dataframe(features_list):
     axes = ['x', 'y', 'z', 'abs']
     columns = [f"{feature}_{axis}" for feature in feature_names for axis in axes]
@@ -111,8 +113,17 @@ while True:
         #feature extraction
         feature_df=features_to_dataframe(features_list)
         # only use absolute acceleration features
-        abs_cols = [col for col in feature_df.columns if 'abs' in col.lower()]
-        feature_df = feature_df[abs_cols]
+        # Exclude the 'activity' column from feature extraction
+        feature_columns = feature_df.columns[:]
+        num_axes = 4  # x, y, z, abs
+
+        # Use modulus to extract each axis's features
+        x_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 0]
+        y_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 1]
+        z_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 2]
+        abs_cols = [col for i, col in enumerate(feature_columns) if i % num_axes == 3]
+
+        feature_df = feature_df[x_cols + y_cols + z_cols + abs_cols]
         if feature_df.empty:
             print("Warning: Features DataFrame is empty!")
             continue

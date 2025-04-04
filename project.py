@@ -57,7 +57,7 @@ with h5py.File("dataset.h5", "a") as f:
         f[f"Raw Data/{person}/{activity}"] = df.values
 #endregion
 
-#region ------------------------------PROCESS RAW DATA AND STORE IN HDF5-----------------------------------------------
+#region ------------------------------PROCESS RAW DATA AND STORE IN HDF5-----------------------------------------------  
 def preprocess_dataframe(df, window_size=51):
     """
     Filter data with rolling mean with bfill.
@@ -426,7 +426,7 @@ print(correlation)
 fig_correlation, ax = plt.subplots(figsize=(15, 8))
 ax.bar(correlation.index, correlation.values)
 
-ax.set_title('Correlation Between ABS Features and Activity', fontsize=14)
+ax.set_title('Correlation Between Features and Activity', fontsize=14)
 ax.set_xlabel('Features', fontsize=12)
 ax.set_ylabel('Correlation', fontsize=12)
 

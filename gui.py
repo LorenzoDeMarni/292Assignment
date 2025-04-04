@@ -137,10 +137,10 @@ def open_csv():
         y_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 1]
         z_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 2]
         abs_cols = [col for i, col in enumerate(feature_columns) if i % num_axes == 3]
-        print(f"X acceleration features being used: {x_cols}")
-        print(f"Y acceleration features being used: {y_cols}")
-        print(f"Z acceleration features being used: {z_cols}")
-        print(f"Absolute acceleration features being used: {abs_cols}")
+        # print(f"X acceleration features being used: {x_cols}")
+        # print(f"Y acceleration features being used: {y_cols}")
+        # print(f"Z acceleration features being used: {z_cols}")
+        # print(f"Absolute acceleration features being used: {abs_cols}")
         
         feature_df = feature_df[x_cols + y_cols + z_cols + abs_cols]
         # print(feature_df)

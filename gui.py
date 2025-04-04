@@ -101,6 +101,31 @@ def popup(output_df):
     for i, row in output_df.iterrows():
         text.insert(END, f"Segment {row['Segment']}: {row['Prediction']}\n")
 
+def save_classifications_to_csv(original_data, output_df, file_path):
+    try:
+        # Create a new DataFrame with just the segment data
+        segments_df = output_df.copy()
+        
+        # Remove the summary row if it exists
+        segments_df = segments_df[segments_df['Segment'] != 'Majority Classification']
+        
+        # Create a simplified DataFrame with only the required columns
+        result_df = pd.DataFrame({
+            'Segment_Number': segments_df['Segment'].astype(int),
+            'Time_Range': segments_df['Time Range'],
+            'Activity': segments_df['Prediction']
+        })
+        
+        # Add overall classification to success message
+        majority_class = output_df.loc[output_df['Segment'] == 'Majority Classification', 'Prediction'].values[0]
+        
+        # Save to CSV
+        result_df.to_csv(file_path, index=False)
+        messagebox.showinfo("Success", f"Classification data saved to {file_path}\nOverall activity: {majority_class}")
+        
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to save CSV file: {str(e)}")
+
 def open_csv():
     csv_file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
     if not csv_file_path:
@@ -174,14 +199,40 @@ def open_csv():
         predictions_text.config(state=tk.NORMAL)  # Ensure it's editable
         predictions_text.delete(1.0, END)  # Clear previous predictions
         for i, row in output_df.iterrows():
-            if row['Segment'] == 'Final Classification':
+            if row['Segment'] == 'Majority Classification':
                 predictions_text.insert(END, f"{row['Segment']}: {row['Prediction']}\n")
             else:
                 predictions_text.insert(END, f"Segment {row['Segment']} ({row['Time Range']}): {row['Prediction']}\n")
         predictions_text.config(state=tk.DISABLED)  # Disable editing after updating
+        
+        # Store data for later use by the save button
+        global current_data, current_output
+        current_data = df
+        current_output = output_df
+        
+        # Enable the save button now that we have data to save
+        save_button.config(state=tk.NORMAL)
 
     except Exception as e:
         messagebox.showerror("Error", f"Failed to process file: {str(e)}")
+
+def save_results():
+    if 'current_data' not in globals() or 'current_output' not in globals():
+        messagebox.showwarning("Warning", "Please classify a CSV file first.")
+        return
+        
+    # Ask user where to save the file
+    file_path = filedialog.asksaveasfilename(
+        defaultextension=".csv",
+        filetypes=[("CSV files", "*.csv")],
+        title="Save Classification Results"
+    )
+    
+    if not file_path:
+        return  # User cancelled the dialog
+        
+    # Save the data
+    save_classifications_to_csv(current_data, current_output, file_path)
 
 def plot_raw_data_with_classification(df, labels):
     try:
@@ -228,6 +279,10 @@ root.geometry("1100x600")  # Smaller window size
 root.resizable(False, False)  # Make window non-resizable
 root.title("Activity Classifier App")
 
+# Initialize globals for storing current data
+current_data = None
+current_output = None
+
 #create main frame
 main_frame=Frame(root)
 main_frame = Frame(root, bg="#1a1f2c")
@@ -256,10 +311,21 @@ content_frame.place(relx=0.5,rely=0.4,anchor="center")
 label=tk.Label(second_frame,text="WELCOME TO THE ACTIVITY CLASSIFIER APP",font=('Comic Sans MS',33,'bold'),bg="#1a1f2c",fg="#ffffff")
 label.pack(padx=20,pady=20)
 
+# Button frame for organizing buttons
+button_frame = Frame(second_frame, bg="#1a1f2c")
+button_frame.pack(padx=30, pady=10)
+
 #button addition
-button=tk.Button(second_frame,text="SELECT CSV FILE TO BE CLASSIFIED",font=('Comic Sans MS',20),command=open_csv,fg="#ffffff",bg="#2c3e50",activebackground="#34495e",activeforeground="white",highlightthickness=4,
+button=tk.Button(button_frame,text="SELECT CSV FILE TO BE CLASSIFIED",font=('Comic Sans MS',20),command=open_csv,fg="#ffffff",bg="#2c3e50",activebackground="#34495e",activeforeground="white",highlightthickness=4,
 highlightbackground="#3498db", highlightcolor="#3498db")
-button.pack(padx=30,pady=30)
+button.pack(side=LEFT, padx=10)
+
+# Add save button (initially disabled until data is loaded)
+save_button = tk.Button(button_frame, text="SAVE RESULTS TO CSV", font=('Comic Sans MS', 20), 
+                       command=save_results, fg="#ffffff", bg="#2c3e50", state=tk.DISABLED,
+                       activebackground="#34495e", activeforeground="white", highlightthickness=4,
+                       highlightbackground="#2ecc71", highlightcolor="#2ecc71")
+save_button.pack(side=LEFT, padx=10)
 
 # Add text area for predictions
 predictions_frame = Frame(second_frame, bg="#1a1f2c")

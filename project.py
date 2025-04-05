@@ -178,8 +178,46 @@ ax6.set_xlabel(time_col)
 ax6.set_ylabel(abs_col)
 ax6.grid(True)
 ax6.legend()
+plt.tight_layout()
+plt.show()
+#plot histogram lorenzo walking acceleration
+x_data = raw_dfs['lorenzo_walking']["Linear Acceleration x (m/s^2)"]
+y_data = raw_dfs['lorenzo_walking']["Linear Acceleration y (m/s^2)"]
+z_data = raw_dfs['lorenzo_walking']["Linear Acceleration z (m/s^2)"]
+plt.figure(figsize=(12, 7))
 
-plt.tight_layout(rect=[0, 0, 1, 0.95])
+# Plot all four histograms on the same axis
+plt.hist(x_data, bins=30, alpha=0.5, label='X Acceleration', edgecolor='black')
+plt.hist(y_data, bins=30, alpha=0.5, label='Y Acceleration', edgecolor='black')
+plt.hist(z_data, bins=30, alpha=0.5, label='Z Acceleration', edgecolor='black')
+
+# Titles and labels
+plt.title('Histogram of Lorenzo Walking - All Acceleration Axes')
+plt.xlabel('Acceleration (m/s²)')
+plt.ylabel('Frequency')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+#plot histogram lorenzo jumping acceleration
+x_data = raw_dfs['lorenzo_jumping']["Linear Acceleration x (m/s^2)"]
+y_data = raw_dfs['lorenzo_jumping']["Linear Acceleration y (m/s^2)"]
+z_data = raw_dfs['lorenzo_jumping']["Linear Acceleration z (m/s^2)"]
+plt.figure(figsize=(12, 7))
+
+# Plot all four histograms on the same axis
+plt.hist(x_data, bins=30, alpha=0.5, label='X Acceleration', edgecolor='black')
+plt.hist(y_data, bins=30, alpha=0.5, label='Y Acceleration', edgecolor='black')
+plt.hist(z_data, bins=30, alpha=0.5, label='Z Acceleration', edgecolor='black')
+
+# Titles and labels
+plt.title('Histogram of Lorenzo Jumping - All Acceleration Axes')
+plt.xlabel('Acceleration (m/s²)')
+plt.ylabel('Frequency')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
 plt.show()
 #endregion
 

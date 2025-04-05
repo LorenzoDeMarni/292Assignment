@@ -1,7 +1,6 @@
 import pandas as pd
 import h5py
 import matplotlib.pyplot as plt
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 import os
@@ -13,33 +12,36 @@ from sklearn.metrics import (accuracy_score, recall_score, confusion_matrix, Con
 import joblib
 
 #region ---------------------------------CREATE HDF5 FILE-----------------------------------------------
-# Create h5py file for organization
+# Create h5py file for organization - this allows structured storage of raw, preprocessed, and segmented data
 with h5py.File("dataset.h5", "w") as f:
+    # Create main data groups for different processing stages
     raw_data_group = f.create_group("Raw Data")
     preprocess_data_group = f.create_group("Pre-processed Data")
     segmented_data_group = f.create_group("Segmented Data")
+    
+    # Create subgroups for training and testing data
     segmented_train_data_group = segmented_data_group.create_group("Train")
     segmented_test_data_group = segmented_data_group.create_group("Test")
     
-    # Create groups for each person
+    # Create groups for each person's data
     for member in ["Lorenzo", "Kaykay", "Daniil"]:
         raw_data_group.create_group(member)
         preprocess_data_group.create_group(member)
 
-# Create directories for different file types
+# Create directories for different file types on disk
 directories = ['raw', 'processed', 'segmented']
 for directory in directories:
     if not os.path.exists(directory):
         os.makedirs(directory)
 
 def check_missing_values(name, df):
-    """Print missing values and dash-based missing markers."""
+    """Print missing values and dash-based missing markers in the dataframe."""
     print(f"{name} NaNs:\n{df.isna().sum()}")
     print(f"{name} dashes: {(df == '-').sum().sum()}\n")
 #endregion
 
 #region ---------------------------------LOAD RAW DATA AND STORE IN HDF5-----------------------------------------------
-# List of datasets. Adjust if you have different filenames.
+# Dictionary of raw data CSV files for each person and activity
 raw_dfs = {
     "lorenzo_walking": pd.read_csv("raw/lorenzo_walking_raw.csv"),
     "lorenzo_jumping": pd.read_csv("raw/lorenzo_jumping_raw.csv"),
@@ -49,8 +51,10 @@ raw_dfs = {
     "daniil_jumping": pd.read_csv("raw/daniil_jumping_raw.csv")
 }
 
+# Store all raw data into the HDF5 file
 with h5py.File("dataset.h5", "a") as f:
     for name, df in raw_dfs.items():
+        # Extract person name and activity type from the dataset name
         person = name.split('_')[0].capitalize()
         activity = name.split('_')[1]
         # Store raw data in HDF5
@@ -59,36 +63,33 @@ with h5py.File("dataset.h5", "a") as f:
 
 #region ------------------------------PROCESS RAW DATA AND STORE IN HDF5-----------------------------------------------  
 def preprocess_dataframe(df, window_size=51):
-    """
-    Filter data with rolling mean with bfill.
-    Automatically detect time column so we skip it.
-    """
+    """Filter data with rolling mean with bfill. Automatically detect time column so we skip it."""
     processed_df = df.copy()
     
-    
-    # Process only non-time columns
+    # Process only non-time columns (skip the first column which is time)
     cols_to_process = df.columns[1:]
     
+    # Apply rolling mean filtering with backfill to handle NaN values at the beginning
     for col in cols_to_process:
         processed_df[col] = df[col].rolling(window=window_size).mean().bfill()
     return processed_df
 
-# Print missing values
-for name, df in raw_dfs.items():
-    check_missing_values(name, df)
+# Check and print missing values in each raw dataset
+# for name, df in raw_dfs.items():
+#     check_missing_values(name, df)
 
-# Preprocess all datasets
+# Apply preprocessing to all datasets
 processed_dfs = {}
 for name, df in raw_dfs.items():
     processed_dfs[name] = preprocess_dataframe(df)
 
-# Save processed CSVs
+# Save processed data as CSV files
 for name, df in processed_dfs.items():
     file_name = f"{name}_processed.csv"
     df.to_csv(os.path.join('processed', file_name), index=False)
     print(f"✅ Processed data saved: {file_name}")
 
-# Store processed data in HDF5
+# Store processed data in HDF5 file for easy access
 with h5py.File("dataset.h5", "a") as f:
     for name, df in processed_dfs.items():
         person = name.split('_')[0].capitalize()
@@ -96,10 +97,167 @@ with h5py.File("dataset.h5", "a") as f:
         f[f"Pre-processed Data/{person}/{activity}"] = df.values
 #endregion
 
+#region ---------------------------------PLOT ALL RAW DATA (X, Y, Z AXES)-----------------------------------------------
+# Plot all raw data for each axis in 3x2 grid (3 users, walking vs jumping)
+print("Plotting all raw data for each axis (X, Y, Z)...")
+
+# Create figure with 3 rows (one for each person) and 2 columns (walking vs jumping)
+fig_raw_all, axes_raw = plt.subplots(3, 2, figsize=(18, 12))
+fig_raw_all.suptitle('Raw Acceleration Data - All Axes', fontsize=16)
+
+# Common columns across all datasets
+time_col = raw_dfs['lorenzo_walking'].columns[0]  # Time column
+x_col = raw_dfs['lorenzo_walking'].columns[1]     # X-axis
+y_col = raw_dfs['lorenzo_walking'].columns[2]     # Y-axis
+z_col = raw_dfs['lorenzo_walking'].columns[3]     # Z-axis
+
+# Row 0: Lorenzo data (walking vs jumping)
+# Walking
+axes_raw[0, 0].plot(raw_dfs['lorenzo_walking'][time_col], raw_dfs['lorenzo_walking'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_raw[0, 0].plot(raw_dfs['lorenzo_walking'][time_col], raw_dfs['lorenzo_walking'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_raw[0, 0].plot(raw_dfs['lorenzo_walking'][time_col], raw_dfs['lorenzo_walking'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_raw[0, 0].set_title('Lorenzo Walking (Raw)')
+axes_raw[0, 0].set_xlabel(time_col)
+axes_raw[0, 0].set_ylabel('Acceleration (m/s²)')
+axes_raw[0, 0].grid(True)
+axes_raw[0, 0].legend()
+
+# Jumping
+axes_raw[0, 1].plot(raw_dfs['lorenzo_jumping'][time_col], raw_dfs['lorenzo_jumping'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_raw[0, 1].plot(raw_dfs['lorenzo_jumping'][time_col], raw_dfs['lorenzo_jumping'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_raw[0, 1].plot(raw_dfs['lorenzo_jumping'][time_col], raw_dfs['lorenzo_jumping'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_raw[0, 1].set_title('Lorenzo Jumping (Raw)')
+axes_raw[0, 1].set_xlabel(time_col)
+axes_raw[0, 1].set_ylabel('Acceleration (m/s²)')
+axes_raw[0, 1].grid(True)
+axes_raw[0, 1].legend()
+
+# Row 1: KayKay data (walking vs jumping)
+# Walking
+axes_raw[1, 0].plot(raw_dfs['kaykay_walking'][time_col], raw_dfs['kaykay_walking'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_raw[1, 0].plot(raw_dfs['kaykay_walking'][time_col], raw_dfs['kaykay_walking'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_raw[1, 0].plot(raw_dfs['kaykay_walking'][time_col], raw_dfs['kaykay_walking'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_raw[1, 0].set_title('KayKay Walking (Raw)')
+axes_raw[1, 0].set_xlabel(time_col)
+axes_raw[1, 0].set_ylabel('Acceleration (m/s²)')
+axes_raw[1, 0].grid(True)
+axes_raw[1, 0].legend()
+
+# Jumping
+axes_raw[1, 1].plot(raw_dfs['kaykay_jumping'][time_col], raw_dfs['kaykay_jumping'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_raw[1, 1].plot(raw_dfs['kaykay_jumping'][time_col], raw_dfs['kaykay_jumping'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_raw[1, 1].plot(raw_dfs['kaykay_jumping'][time_col], raw_dfs['kaykay_jumping'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_raw[1, 1].set_title('KayKay Jumping (Raw)')
+axes_raw[1, 1].set_xlabel(time_col)
+axes_raw[1, 1].set_ylabel('Acceleration (m/s²)')
+axes_raw[1, 1].grid(True)
+axes_raw[1, 1].legend()
+
+# Row 2: Daniil data (walking vs jumping)
+# Walking
+axes_raw[2, 0].plot(raw_dfs['daniil_walking'][time_col], raw_dfs['daniil_walking'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_raw[2, 0].plot(raw_dfs['daniil_walking'][time_col], raw_dfs['daniil_walking'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_raw[2, 0].plot(raw_dfs['daniil_walking'][time_col], raw_dfs['daniil_walking'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_raw[2, 0].set_title('Daniil Walking (Raw)')
+axes_raw[2, 0].set_xlabel(time_col)
+axes_raw[2, 0].set_ylabel('Acceleration (m/s²)')
+axes_raw[2, 0].grid(True)
+axes_raw[2, 0].legend()
+
+# Jumping
+axes_raw[2, 1].plot(raw_dfs['daniil_jumping'][time_col], raw_dfs['daniil_jumping'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_raw[2, 1].plot(raw_dfs['daniil_jumping'][time_col], raw_dfs['daniil_jumping'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_raw[2, 1].plot(raw_dfs['daniil_jumping'][time_col], raw_dfs['daniil_jumping'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_raw[2, 1].set_title('Daniil Jumping (Raw)')
+axes_raw[2, 1].set_xlabel(time_col)
+axes_raw[2, 1].set_ylabel('Acceleration (m/s²)')
+axes_raw[2, 1].grid(True)
+axes_raw[2, 1].legend()
+
+plt.tight_layout()
+plt.show()
+print("Raw data plots displayed.")
+
+#region ---------------------------------PLOT ALL PROCESSED DATA (X, Y, Z AXES)-----------------------------------------------
+# Plot all processed data for each axis in 3x2 grid (3 users, walking vs jumping)
+print("Plotting all processed data for each axis (X, Y, Z)...")
+
+# Create figure with 3 rows (one for each person) and 2 columns (walking vs jumping)
+fig_processed_all, axes_processed = plt.subplots(3, 2, figsize=(18, 12))
+fig_processed_all.suptitle('Processed Acceleration Data - All Axes', fontsize=16)
+
+# Row 0: Lorenzo data (walking vs jumping)
+# Walking
+axes_processed[0, 0].plot(processed_dfs['lorenzo_walking'][time_col], processed_dfs['lorenzo_walking'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_processed[0, 0].plot(processed_dfs['lorenzo_walking'][time_col], processed_dfs['lorenzo_walking'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_processed[0, 0].plot(processed_dfs['lorenzo_walking'][time_col], processed_dfs['lorenzo_walking'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_processed[0, 0].set_title('Lorenzo Walking (Processed)')
+axes_processed[0, 0].set_xlabel(time_col)
+axes_processed[0, 0].set_ylabel('Acceleration (m/s²)')
+axes_processed[0, 0].grid(True)
+axes_processed[0, 0].legend()
+
+# Jumping
+axes_processed[0, 1].plot(processed_dfs['lorenzo_jumping'][time_col], processed_dfs['lorenzo_jumping'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_processed[0, 1].plot(processed_dfs['lorenzo_jumping'][time_col], processed_dfs['lorenzo_jumping'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_processed[0, 1].plot(processed_dfs['lorenzo_jumping'][time_col], processed_dfs['lorenzo_jumping'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_processed[0, 1].set_title('Lorenzo Jumping (Processed)')
+axes_processed[0, 1].set_xlabel(time_col)
+axes_processed[0, 1].set_ylabel('Acceleration (m/s²)')
+axes_processed[0, 1].grid(True)
+axes_processed[0, 1].legend()
+
+# Row 1: KayKay data (walking vs jumping)
+# Walking
+axes_processed[1, 0].plot(processed_dfs['kaykay_walking'][time_col], processed_dfs['kaykay_walking'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_processed[1, 0].plot(processed_dfs['kaykay_walking'][time_col], processed_dfs['kaykay_walking'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_processed[1, 0].plot(processed_dfs['kaykay_walking'][time_col], processed_dfs['kaykay_walking'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_processed[1, 0].set_title('KayKay Walking (Processed)')
+axes_processed[1, 0].set_xlabel(time_col)
+axes_processed[1, 0].set_ylabel('Acceleration (m/s²)')
+axes_processed[1, 0].grid(True)
+axes_processed[1, 0].legend()
+
+# Jumping
+axes_processed[1, 1].plot(processed_dfs['kaykay_jumping'][time_col], processed_dfs['kaykay_jumping'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_processed[1, 1].plot(processed_dfs['kaykay_jumping'][time_col], processed_dfs['kaykay_jumping'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_processed[1, 1].plot(processed_dfs['kaykay_jumping'][time_col], processed_dfs['kaykay_jumping'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_processed[1, 1].set_title('KayKay Jumping (Processed)')
+axes_processed[1, 1].set_xlabel(time_col)
+axes_processed[1, 1].set_ylabel('Acceleration (m/s²)')
+axes_processed[1, 1].grid(True)
+axes_processed[1, 1].legend()
+
+# Row 2: Daniil data (walking vs jumping)
+# Walking
+axes_processed[2, 0].plot(processed_dfs['daniil_walking'][time_col], processed_dfs['daniil_walking'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_processed[2, 0].plot(processed_dfs['daniil_walking'][time_col], processed_dfs['daniil_walking'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_processed[2, 0].plot(processed_dfs['daniil_walking'][time_col], processed_dfs['daniil_walking'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_processed[2, 0].set_title('Daniil Walking (Processed)')
+axes_processed[2, 0].set_xlabel(time_col)
+axes_processed[2, 0].set_ylabel('Acceleration (m/s²)')
+axes_processed[2, 0].grid(True)
+axes_processed[2, 0].legend()
+
+# Jumping
+axes_processed[2, 1].plot(processed_dfs['daniil_jumping'][time_col], processed_dfs['daniil_jumping'][x_col], 'r-', alpha=0.7, label='X-axis')
+axes_processed[2, 1].plot(processed_dfs['daniil_jumping'][time_col], processed_dfs['daniil_jumping'][y_col], 'g-', alpha=0.7, label='Y-axis')
+axes_processed[2, 1].plot(processed_dfs['daniil_jumping'][time_col], processed_dfs['daniil_jumping'][z_col], 'b-', alpha=0.7, label='Z-axis')
+axes_processed[2, 1].set_title('Daniil Jumping (Processed)')
+axes_processed[2, 1].set_xlabel(time_col)
+axes_processed[2, 1].set_ylabel('Acceleration (m/s²)')
+axes_processed[2, 1].grid(True)
+axes_processed[2, 1].legend()
+
+plt.tight_layout()
+plt.show()
+print("Processed data plots displayed.")
+
 #region ---------------------------------PLOT DATA (RAW vs FILTERED)-----------------------------------------------
 fig_lorenzo, axes = plt.subplots(3, 2, figsize=(15, 10))
 ax1, ax2, ax3, ax4, ax5, ax6 = axes.flatten()
 fig_lorenzo.suptitle('Acceleration Processing', fontsize=16)
+print("Plotting Raw vs filtered absolute acceleration for all users....")
 
 # Lorenzo Walking
 time_col = raw_dfs['lorenzo_walking'].columns[0]
@@ -180,6 +338,8 @@ ax6.grid(True)
 ax6.legend()
 plt.tight_layout()
 plt.show()
+print("Raw vs filtered absolute acceleration for all users plotted.")
+
 #plot histogram lorenzo walking acceleration
 x_data = raw_dfs['lorenzo_walking']["Linear Acceleration x (m/s^2)"]
 y_data = raw_dfs['lorenzo_walking']["Linear Acceleration y (m/s^2)"]
@@ -187,6 +347,7 @@ z_data = raw_dfs['lorenzo_walking']["Linear Acceleration z (m/s^2)"]
 plt.figure(figsize=(12, 7))
 
 # Plot all four histograms on the same axis
+print("Plotting histogram of Lorenzo Walking - All Acceleration Axes")
 plt.hist(x_data, bins=30, alpha=0.5, label='X Acceleration', edgecolor='black')
 plt.hist(y_data, bins=30, alpha=0.5, label='Y Acceleration', edgecolor='black')
 plt.hist(z_data, bins=30, alpha=0.5, label='Z Acceleration', edgecolor='black')
@@ -201,6 +362,7 @@ plt.tight_layout()
 plt.show()
 
 #plot histogram lorenzo jumping acceleration
+print("Plotting histogram of Lorenzo Jumping - All Acceleration Axes")
 x_data = raw_dfs['lorenzo_jumping']["Linear Acceleration x (m/s^2)"]
 y_data = raw_dfs['lorenzo_jumping']["Linear Acceleration y (m/s^2)"]
 z_data = raw_dfs['lorenzo_jumping']["Linear Acceleration z (m/s^2)"]
@@ -223,10 +385,7 @@ plt.show()
 
 #region ---------------------------------SEGMENT DATA-----------------------------------------------
 def segment_data_5s(data, window_size):
-    """
-    Splits the data into segments of length 'window_size'.
-    Skips the time column automatically.
-    """
+    """Splits data into segments of length window_size, skipping the time column."""
     segments = []
 
     # Identify time col to skip it
@@ -235,13 +394,15 @@ def segment_data_5s(data, window_size):
     # Use everything except time col
     data_no_time = data.drop(columns=[time_col])
 
+    # Create segments of fixed window size from the data
     for i in range(0, len(data_no_time), window_size):
         segment = data_no_time.iloc[i : i + window_size, :].values
+        # Only add complete segments (avoids partial segments at the end)
         if len(segment) == window_size:
             segments.append(segment)
     return np.array(segments)
 
-#compute average sampling frequency
+# Compute average sampling frequency for each person to determine appropriate window size
 lorenzo_sampling_rate = 1 / processed_dfs['lorenzo_walking'][time_col].diff().mean()
 kaykay_sampling_rate = 1 / processed_dfs['kaykay_jumping'][time_col].diff().mean()
 daniil_sampling_rate = 1 / processed_dfs['daniil_jumping'][time_col].diff().mean()
@@ -250,98 +411,65 @@ print(f"Lorenzo Estimated Sampling Frequency: {lorenzo_sampling_rate:.2f} Hz")
 print(f"KayKay Estimated Sampling Frequency: {kaykay_sampling_rate:.2f} Hz")
 print(f"Daniil Estimated Sampling Frequency: {daniil_sampling_rate:.2f} Hz")
 
+# Round sampling rates to nearest 50 Hz and check if they are consistent
 if (round(lorenzo_sampling_rate/50)*50) == (round(kaykay_sampling_rate/50)*50) == (round(daniil_sampling_rate/50)*50):
     official_sample_rate = (round(lorenzo_sampling_rate/50)*50)
 else:
-    print("Sampling rates are not the same")
+    print("Warning: Sampling rates are not the same across datasets")
 
 print(f"Official Sample rate: {official_sample_rate}")
+
+# Calculate window size for 5-second segments based on sampling rate
 window_size = int(5 * official_sample_rate)
 
+# Segment all processed datasets
 segmented_arrays = {}
 for name, df in processed_dfs.items():
     segmented_arrays[name] = segment_data_5s(df, window_size)
 
+# Print the shape of each segmented array for verification
 print("Segment shapes:")
 for name, array in segmented_arrays.items():
     print(f"{name}: {array.shape}")
 #endregion
 
-#region ---------------------------------PLOT SEGMENTED DATA EXAMPLE (Second Segment)-----------------------------------------------
-# Example: Plot second 5-second segments for all users walking vs jumping
-# In 'segmented_arrays', columns: 0->x,1->y,2->z,3->abs
-time_axis = np.linspace(0, 5, int(window_size), endpoint=False)
-
-fig_lorenzo_seg, axes = plt.subplots(1, 2, figsize=(15, 5))
-fig_lorenzo_seg.suptitle('Segmented Data Example (2nd 5s segment)', fontsize=16)
-ax1, ax2 = axes.flatten()
-
-# Lorenzo walking
-lorenzo_walk = segmented_arrays['lorenzo_walking'][2]
-kaykay_walk = segmented_arrays['kaykay_walking'][2]
-daniil_walk = segmented_arrays['daniil_walking'][2] 
-
-ax1.plot(time_axis, lorenzo_walk[:, 3], 'k-', label='Lorenzo')
-ax1.plot(time_axis, kaykay_walk[:, 3], 'b-', label='KayKay')
-ax1.plot(time_axis, daniil_walk[:, 3], 'r-', label='Daniil')
-ax1.set_title('Walking Absolute Acceleration')
-ax1.set_xlabel('Time (s)')
-ax1.set_ylabel('Acceleration (m/s²)')
-ax1.legend()
-ax1.grid(True)
-
-# Lorenzo jumping
-lorenzo_jump = segmented_arrays['lorenzo_jumping'][2]  
-kaykay_jump = segmented_arrays['kaykay_jumping'][2]  
-daniil_jump = segmented_arrays['daniil_jumping'][2]  
-
-ax2.plot(time_axis, lorenzo_jump[:, 3], 'k-', label='Lorenzo')
-ax2.plot(time_axis, kaykay_jump[:, 3], 'b-', label='KayKay')
-ax2.plot(time_axis, daniil_jump[:, 3], 'r-', label='Daniil')
-ax2.set_title('Jumping Absolute Acceleration')
-ax2.set_xlabel('Time (s)')
-ax2.set_ylabel('Acceleration (m/s²)')
-ax2.legend()
-ax2.grid(True)
-
-plt.tight_layout(rect=[0, 0, 1, 0.95])
-plt.show()
-#endregion
-
 #region ---------------------------------EXTRACT FEATURES-----------------------------------------------
 def extract_features(segment):
-    '''
-    Extract features from a segment of data.
-    '''
+    '''Extract statistical features from a segment of data.'''
     features = {}
-    features["mean"] = np.mean(segment, axis=0)
-    features["std"] = np.std(segment, axis=0)
-    features["min"] = np.min(segment, axis=0)
-    features["max"] = np.max(segment, axis=0)
-    features["range"] = np.ptp(segment, axis=0)
-    features["variance"] = np.var(segment, axis=0)
-    features["median"] = np.median(segment, axis=0)
-    features["rms"] = np.sqrt(np.mean(np.square(segment), axis=0))
-    features["kurtosis"] = stats.kurtosis(segment, axis=0)
-    features["skewness"] = stats.skew(segment, axis=0)
+    # Basic statistical features
+    features["mean"] = np.mean(segment, axis=0)  # Mean of each axis
+    features["std"] = np.std(segment, axis=0)    # Standard deviation
+    features["min"] = np.min(segment, axis=0)    # Minimum value
+    features["max"] = np.max(segment, axis=0)    # Maximum value
+    features["range"] = np.ptp(segment, axis=0)  # Peak-to-peak (max-min)
+    features["variance"] = np.var(segment, axis=0)  # Variance
+    features["median"] = np.median(segment, axis=0)  # Median value
+    features["rms"] = np.sqrt(np.mean(np.square(segment), axis=0))  # Root mean square
+    
+    # Shape-based features
+    features["kurtosis"] = stats.kurtosis(segment, axis=0)  # Kurtosis (peakedness)
+    features["skewness"] = stats.skew(segment, axis=0)      # Skewness (asymmetry)
     return features
 
+# List of all feature names
 feature_names = [
     'mean', 'std', 'min', 'max', 'range', 'variance',
     'median', 'rms', 'kurtosis', 'skewness'
 ]
 
 def features_to_dataframe(features_list):
-    '''
-    Convert features list to a dataframe.
-    '''
+    '''Convert features list to a dataframe with named columns.'''
+    # Axes names for column labeling
     axes = ['x', 'y', 'z', 'abs']
     
+    # Create column names by combining feature name and axis
     columns = []
     for feature in feature_names:
         for axis in axes:
             columns.append(f"{feature}_{axis}")
     
+    # Convert the feature dictionaries to rows of data
     data_rows = []
     for feat_dict in features_list:
         row = []
@@ -351,7 +479,7 @@ def features_to_dataframe(features_list):
     
     return pd.DataFrame(data_rows, columns=columns)
 
-# Extract features from each segment
+# Extract features from each segment of data
 features_arrays = {}
 for name, array in segmented_arrays.items():
     feats_for_name = []
@@ -359,12 +487,12 @@ for name, array in segmented_arrays.items():
         feats_for_name.append(extract_features(segment))
     features_arrays[name] = feats_for_name
 
-# Convert features list to a dataframe
+# Convert feature lists to DataFrames with named columns
 features_dfs = {}
 for name, feat_list in features_arrays.items():
     features_dfs[name] = features_to_dataframe(feat_list)
 
-# Save the feature DataFrame to CSV
+# Save the feature DataFrames to CSV files
 for name, df in features_dfs.items():
     out_file = os.path.join('segmented', f'{name}_segmented.csv')
     df.to_csv(out_file, index=False)
@@ -372,9 +500,11 @@ for name, df in features_dfs.items():
 #endregion
 
 #region ---------------------------------CREATE FINAL DATASET-----------------------------------------------
+# Combine all feature DataFrames into a single dataset, adding activity labels
 final_dataset = pd.DataFrame()
 for name, df in features_dfs.items():
-    activity_label = 0 if name.endswith('walking') else 1  # If not walking, assume jumping
+    # Label: 0 for walking, 1 for jumping
+    activity_label = 0 if name.endswith('walking') else 1  
     df['activity'] = activity_label
     final_dataset = pd.concat([final_dataset, df], axis=0, ignore_index=True)
 
@@ -382,36 +512,44 @@ print(f"Final dataset shape: {final_dataset.shape}")  # (rows, columns)
 #endregion
 
 #region ---------------------------------SPECIFY WHICH AXIS TO TRAIN WITH-----------------------------------------------
-# Filter columns to only include abs-acceleration related features
+# Organize columns by axis type to help with feature selection and analysis
 
-# Exclude the 'activity' column from feature extraction
+# Get all feature columns (exclude the activity/label column)
 feature_columns = final_dataset.columns[:-1]
 num_axes = 4  # x, y, z, abs
 
-# Use modulus to extract each axis's features
+# Use modulus to extract features for each axis separately
+# This works because our columns are organized such that:
+# Column 0, 4, 8... are x-axis features
+# Column 1, 5, 9... are y-axis features
+# Column 2, 6, 10... are z-axis features
+# Column 3, 7, 11... are abs-axis features
 x_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 0]
 y_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 1]
 z_cols   = [col for i, col in enumerate(feature_columns) if i % num_axes == 2]
 abs_cols = [col for i, col in enumerate(feature_columns) if i % num_axes == 3]
 
+# Print feature lists for verification
 print("X features:", x_cols)
 print("Y features:", y_cols)
 print("Z features:", z_cols)
 print("Abs features:", abs_cols)
 
+# Reorganize final dataset to group features by axis type
 final_dataset = final_dataset[x_cols + y_cols + z_cols + abs_cols + ['activity']]
 #endregion
 
 #region ---------------------------------TRAIN LOGISTIC REGRESSION-----------------------------------------------
-# Separate features (only abs) and labels
+# Prepare data for model training by separating features and labels
 final_data = final_dataset.drop('activity', axis=1)
 final_labels = final_dataset['activity']
 
-# 10% test, 90% train
+# Split data into training (90%) and testing (10%) sets
 X_train, X_test, y_train, y_test = train_test_split(
     final_data, final_labels, test_size=0.1, shuffle=True, random_state=0
 )
 
+# Store train/test data in HDF5 file
 with h5py.File("dataset.h5", "a") as f:
     f["Segmented Data/Train/X"] = X_train.values
     f["Segmented Data/Train/y"] = y_train.values
@@ -419,35 +557,43 @@ with h5py.File("dataset.h5", "a") as f:
     f["Segmented Data/Test/X"] = X_test.values
     f["Segmented Data/Test/y"] = y_test.values
     
+    # Store feature names and count for reference
     f["Segmented Data/feature_names"] = list(final_data.columns)
     f["Segmented Data/num_features"] = len(final_data.columns)
 
+# Print dataset information
 print(f"Number of features (columns) being used: {len(final_data.columns)}")
 print(f"Training set shape: {X_train.shape}")
 print(f"Testing set shape: {X_test.shape}")
 
-#train and normalize data using pipeline and standard scaler
-l_reg = LogisticRegression(max_iter=10000)
+# Create and train a logistic regression model with preprocessing pipeline
+# The pipeline ensures standardization of features before model training
+l_reg = LogisticRegression(max_iter=10000)  # Increase max_iter to ensure convergence
 clf = make_pipeline(StandardScaler(), l_reg)
 clf.fit(X_train, y_train)
 
+# Save the trained model to disk for later use
 joblib.dump(clf, "activity_classifier.pkl")
 
+# Evaluate model performance on test data
 predictions = clf.predict(X_test)
-clf_probs = clf.predict_proba(X_test)
+clf_probs = clf.predict_proba(X_test)  # Probability estimates
 acc = accuracy_score(y_test, predictions)
 recall = recall_score(y_test, predictions)
 
+# Print evaluation metrics
 print(f"Predictions: {predictions}")
 print(f"Probabilities: {clf_probs}")
 print(f"Accuracy: {acc}")
 print(f"Recall: {recall}")
 
+# Plot confusion matrix for visual evaluation
 cm = confusion_matrix(y_test, predictions)
 ConfusionMatrixDisplay(cm).plot()
 plt.title('Confusion Matrix')
 plt.show()
 
+# Plot ROC curve to evaluate model discrimination ability
 fpr, tpr, thresholds = roc_curve(y_test, clf_probs[:, 1], pos_label=clf.classes_[1])
 RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
 plt.title('ROC Curve')
@@ -455,12 +601,14 @@ plt.show()
 auc = roc_auc_score(y_test, clf_probs[:, 1])
 print(f"AUC: {auc}\n")
 
-# Correlation of final abs-only dataset
+# Calculate feature correlation with activity label for feature importance analysis
 correlation = final_dataset.corr()['activity'].sort_values(ascending=False)
+print("Correlation of final dataset:")
 print(correlation)
 #endregion
 
 #region ---------------------------------PLOT CORRELATION BAR GRAPH-----------------------------------------------
+# Visualize correlation between each feature and the activity label
 fig_correlation, ax = plt.subplots(figsize=(15, 8))
 ax.bar(correlation.index, correlation.values)
 
@@ -474,7 +622,6 @@ plt.tight_layout()
 plt.show()
 #endregion
 
-
-
+# Save the final model again to ensure it's stored
 joblib.dump(clf, 'activity_classifier.pkl')
 print("✅Model saved as activity_classifier.pkl")

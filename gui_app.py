@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, Toplevel, Text, Scrollbar, RIGHT, Y, END
+from tkinter import filedialog, messagebox, Toplevel, Text, Scrollbar, RIGHT, Y, END, X
 import pandas as pd
 import numpy as np
 import joblib
@@ -239,10 +239,14 @@ def plot_raw_data_with_classification(df, labels):
         # Compute absolute acceleration
         df['abs'] = df['Absolute acceleration (m/s^2)']
 
-        # Create the figure
-        fig = Figure(figsize=(15, 6), dpi=100)
+        # Clear any existing plot in the plot_frame
+        for widget in plot_frame.winfo_children():
+            widget.destroy()
+
+        # Create the figure - adjust height to ensure full visibility
+        fig = Figure(figsize=(12, 8), dpi=100)
         ax = fig.add_subplot(111)
-        ax.plot(df['abs'].values, label='Abs Acceleration', color='black')
+        ax.plot(df['abs'].values, label='Absolute Acceleration', color='black')
 
         # Highlight each segment
         for i, label in enumerate(labels):
@@ -263,82 +267,88 @@ def plot_raw_data_with_classification(df, labels):
         ]
         ax.legend(handles=legend_elements)
 
-        # Create popup window to show plot
-        plot_window = Toplevel(root)
-        plot_window.title("Acceleration Plot with Predictions")
-        canvas = FigureCanvasTkAgg(fig, master=plot_window)
+        # Pack the plot frame first to ensure it's visible in the layout
+        plot_frame.pack(fill=BOTH, expand=True, pady=(0, 20))
+        
+        # Create a canvas frame to hold the plot with proper scrolling
+        canvas_frame = Frame(plot_frame, bg="#1a1f2c")
+        canvas_frame.pack(fill=BOTH, expand=True)
+        
+        # Display the plot
+        canvas = FigureCanvasTkAgg(fig, master=canvas_frame)
         canvas.draw()
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        canvas.get_tk_widget().pack(fill=BOTH, expand=True)
+        
+        # Add a toolbar for navigation (optional)
+        from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+        toolbar = NavigationToolbar2Tk(canvas, canvas_frame)
+        toolbar.update()
+        canvas.get_tk_widget().pack(fill=BOTH, expand=True)
 
     except Exception as e:
         messagebox.showerror("Plot Error", f"Could not plot data: {str(e)}")
+
 #GUI
 root=tk.Tk()
 root.configure(bg="#1a1f2c")  # Dark blue background
-root.geometry("1100x600")  # Smaller window size
-root.resizable(False, False)  # Make window non-resizable
+root.geometry("1200x900")  # Slightly wider
+root.resizable(True, True)  # Make window resizable to allow user adjustments
 root.title("Activity Classifier App")
 
 # Initialize globals for storing current data
 current_data = None
 current_output = None
 
-#create main frame
-main_frame=Frame(root)
-main_frame = Frame(root, bg="#1a1f2c")
-main_frame.pack(expand=1,fill=BOTH)
+# Create a master frame to hold everything
+master_frame = Frame(root, bg="#1a1f2c")
+master_frame.pack(fill=BOTH, expand=1, padx=20, pady=20)
 
-#create a canvas
-my_canvas=Canvas(main_frame, bg="#1a1f2c")
-my_canvas.pack(side=LEFT,fill=BOTH,expand=1)
+# Header
+header_frame = Frame(master_frame, bg="#1a1f2c")
+header_frame.pack(fill=X, pady=(0, 20))
 
-#add a scrollbar to the canvas
-my_scrollbar=ttk.Scrollbar(main_frame,orient=VERTICAL,command=my_canvas.yview)
-my_scrollbar.pack(side=RIGHT,fill=Y,)
-
-#configure the canvas
-my_canvas.configure(yscrollcommand=my_scrollbar.set)
-my_canvas.bind('<Configure>',lambda e:my_canvas.configure(scrollregion=my_canvas.bbox("all")) )
-
-#create another frame for the canvas
-second_frame = Frame(root, bg="#1a1f2c")
-my_canvas.create_window((0,0),window=second_frame,anchor="nw")
-
-content_frame = Frame(second_frame, bg="#1a1f2c")
-content_frame.pack(expand=1)
-content_frame.place(relx=0.5,rely=0.4,anchor="center")
-
-label=tk.Label(second_frame,text="WELCOME TO THE ACTIVITY CLASSIFIER APP",font=('Comic Sans MS',33,'bold'),bg="#1a1f2c",fg="#ffffff")
-label.pack(padx=20,pady=20)
+label=tk.Label(header_frame, text="WELCOME TO THE ACTIVITY CLASSIFIER APP", font=('Comic Sans MS',33,'bold'), bg="#1a1f2c", fg="#ffffff")
+label.pack(pady=10)
 
 # Button frame for organizing buttons
-button_frame = Frame(second_frame, bg="#1a1f2c")
-button_frame.pack(padx=30, pady=10)
+button_frame = Frame(master_frame, bg="#1a1f2c")
+button_frame.pack(fill=X, pady=10)
 
-#button addition
-button=tk.Button(button_frame,text="SELECT CSV FILE TO BE CLASSIFIED",font=('Comic Sans MS',20),command=open_csv,fg="#ffffff",bg="#2c3e50",activebackground="#34495e",activeforeground="white",highlightthickness=4,
-highlightbackground="#3498db", highlightcolor="#3498db")
+# Center the buttons
+button_container = Frame(button_frame, bg="#1a1f2c")
+button_container.pack(anchor="center")
+
+button=tk.Button(button_container, text="SELECT CSV FILE TO BE CLASSIFIED", font=('Comic Sans MS',20), command=open_csv, fg="#ffffff", bg="#2c3e50", 
+               activebackground="#34495e", activeforeground="white", highlightthickness=4,
+               highlightbackground="#3498db", highlightcolor="#3498db")
 button.pack(side=LEFT, padx=10)
 
 # Add save button (initially disabled until data is loaded)
-save_button = tk.Button(button_frame, text="SAVE RESULTS TO CSV", font=('Comic Sans MS', 20), 
+save_button = tk.Button(button_container, text="SAVE RESULTS TO CSV", font=('Comic Sans MS', 20), 
                        command=save_results, fg="#ffffff", bg="#2c3e50", state=tk.DISABLED,
                        activebackground="#34495e", activeforeground="white", highlightthickness=4,
                        highlightbackground="#2ecc71", highlightcolor="#2ecc71")
 save_button.pack(side=LEFT, padx=10)
 
 # Add text area for predictions
-predictions_frame = Frame(second_frame, bg="#1a1f2c")
-predictions_frame.pack(padx=20, pady=20, fill=BOTH, expand=True)
+predictions_frame = Frame(master_frame, bg="#1a1f2c")
+predictions_frame.pack(fill=X, pady=20)
 
 predictions_label = tk.Label(predictions_frame, text="Classification Results:", font=('Comic Sans MS', 20, 'bold'), bg="#1a1f2c", fg="#ffffff")
 predictions_label.pack(pady=10)
 
-predictions_text = Text(predictions_frame, wrap="word", font=('Comic Sans MS', 12), bg="#2c3e50", fg="#ffffff", height=8)
+text_container = Frame(predictions_frame, bg="#1a1f2c")
+text_container.pack(fill=X)
+
+predictions_text = Text(text_container, wrap="word", font=('Comic Sans MS', 12), bg="#2c3e50", fg="#ffffff", height=12)
 predictions_text.pack(side=LEFT, fill=BOTH, expand=True)
 
-predictions_scrollbar = Scrollbar(predictions_frame, command=predictions_text.yview)
+predictions_scrollbar = Scrollbar(text_container, command=predictions_text.yview)
 predictions_scrollbar.pack(side=RIGHT, fill=Y)
 predictions_text.configure(yscrollcommand=predictions_scrollbar.set)
+
+# Add a frame for the plot underneath the results
+plot_frame = Frame(master_frame, bg="#1a1f2c")
+# Note: plot_frame is not packed immediately, it's packed when the plot is created
 
 root.mainloop()

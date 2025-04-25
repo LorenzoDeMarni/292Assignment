@@ -178,6 +178,133 @@ plt.tight_layout()
 plt.show()
 print("Raw data plots displayed.")
 
+# Plot absolute acceleration for walking and jumping raw data
+print("Plotting absolute acceleration for walking and jumping raw data...")
+
+# Set dark theme for plots like in generate_images.py
+plt.style.use('dark_background')
+plt.rcParams.update({
+    'figure.facecolor': '#212529',
+    'axes.facecolor': '#212529',
+    'savefig.facecolor': '#212529',
+    'text.color': 'white',
+    'axes.labelcolor': 'white',
+    'xtick.color': 'white',
+    'ytick.color': 'white',
+    'grid.color': '#495057',
+    'axes.grid': True,
+    'font.size': 12
+})
+
+# Side-by-side layout for raw data (walking left, jumping right)
+fig_abs, axes_abs = plt.subplots(1, 2, figsize=(15, 6))
+fig_abs.suptitle('Raw Absolute Acceleration Data', fontsize=16)
+
+# Calculate absolute acceleration for walking (using KayKay's data)
+if 'Absolute acceleration (m/s^2)' in raw_dfs['kaykay_walking'].columns:
+    abs_acc_walking = raw_dfs['kaykay_walking']['Absolute acceleration (m/s^2)'].values
+else:
+    # Calculate absolute acceleration from x, y, z components
+    x = raw_dfs['kaykay_walking']['Linear Acceleration x (m/s^2)'].values
+    y = raw_dfs['kaykay_walking']['Linear Acceleration y (m/s^2)'].values
+    z = raw_dfs['kaykay_walking']['Linear Acceleration z (m/s^2)'].values
+    abs_acc_walking = np.sqrt(x**2 + y**2 + z**2)  # Proper absolute value calculation
+
+# Calculate absolute acceleration for jumping (using Lorenzo's data)
+if 'Absolute acceleration (m/s^2)' in raw_dfs['lorenzo_jumping'].columns:
+    abs_acc_jumping = raw_dfs['lorenzo_jumping']['Absolute acceleration (m/s^2)'].values
+else:
+    # Calculate absolute acceleration from x, y, z components
+    x = raw_dfs['lorenzo_jumping']['Linear Acceleration x (m/s^2)'].values
+    y = raw_dfs['lorenzo_jumping']['Linear Acceleration y (m/s^2)'].values
+    z = raw_dfs['lorenzo_jumping']['Linear Acceleration z (m/s^2)'].values
+    abs_acc_jumping = np.sqrt(x**2 + y**2 + z**2)  # Proper absolute value calculation
+
+# Plot walking absolute acceleration (left)
+axes_abs[0].plot(raw_dfs['kaykay_walking'][time_col], abs_acc_walking, 'g-', linewidth=2, alpha=0.9, label='Absolute Acceleration')
+axes_abs[0].set_title('Walking Activity (Raw Absolute Acceleration)', fontsize=14)
+axes_abs[0].set_xlabel('Time (s)')
+axes_abs[0].set_ylabel('Absolute Acceleration (m/s²)')
+axes_abs[0].set_ylim(bottom=0)  # Ensure y-axis starts at 0
+axes_abs[0].grid(True)
+axes_abs[0].legend()
+
+# Plot jumping absolute acceleration (right)
+axes_abs[1].plot(raw_dfs['lorenzo_jumping'][time_col], abs_acc_jumping, 'r-', linewidth=2, alpha=0.9, label='Absolute Acceleration')
+axes_abs[1].set_title('Jumping Activity (Raw Absolute Acceleration)', fontsize=14)
+axes_abs[1].set_xlabel('Time (s)')
+axes_abs[1].set_ylabel('Absolute Acceleration (m/s²)')
+axes_abs[1].set_ylim(bottom=0)  # Ensure y-axis starts at 0
+axes_abs[1].grid(True)
+axes_abs[1].legend()
+
+plt.tight_layout()
+plt.show()
+print("Absolute acceleration plots displayed.")
+
+# Plot comparison of raw vs processed absolute acceleration data in a new window
+print("Plotting raw vs processed absolute acceleration data...")
+fig_proc, axes_proc = plt.subplots(1, 2, figsize=(15, 6))
+fig_proc.suptitle('Raw vs Processed Absolute Acceleration Data', fontsize=16)
+
+# Calculate absolute acceleration for walking (raw and processed)
+if 'Absolute acceleration (m/s^2)' in raw_dfs['kaykay_walking'].columns:
+    raw_abs_walking = raw_dfs['kaykay_walking']['Absolute acceleration (m/s^2)'].values
+    processed_abs_walking = processed_dfs['kaykay_walking']['Absolute acceleration (m/s^2)'].values
+else:
+    # Calculate absolute acceleration from x, y, z components - raw data
+    x_raw = raw_dfs['kaykay_walking']['Linear Acceleration x (m/s^2)'].values
+    y_raw = raw_dfs['kaykay_walking']['Linear Acceleration y (m/s^2)'].values
+    z_raw = raw_dfs['kaykay_walking']['Linear Acceleration z (m/s^2)'].values
+    raw_abs_walking = np.sqrt(x_raw**2 + y_raw**2 + z_raw**2)
+    
+    # Calculate absolute acceleration from x, y, z components - processed data
+    x_proc = processed_dfs['kaykay_walking']['Linear Acceleration x (m/s^2)'].values
+    y_proc = processed_dfs['kaykay_walking']['Linear Acceleration y (m/s^2)'].values
+    z_proc = processed_dfs['kaykay_walking']['Linear Acceleration z (m/s^2)'].values
+    processed_abs_walking = np.sqrt(x_proc**2 + y_proc**2 + z_proc**2)
+
+# Calculate absolute acceleration for jumping (raw and processed)
+if 'Absolute acceleration (m/s^2)' in raw_dfs['lorenzo_jumping'].columns:
+    raw_abs_jumping = raw_dfs['lorenzo_jumping']['Absolute acceleration (m/s^2)'].values
+    processed_abs_jumping = processed_dfs['lorenzo_jumping']['Absolute acceleration (m/s^2)'].values
+else:
+    # Calculate absolute acceleration from x, y, z components - raw data
+    x_raw = raw_dfs['lorenzo_jumping']['Linear Acceleration x (m/s^2)'].values
+    y_raw = raw_dfs['lorenzo_jumping']['Linear Acceleration y (m/s^2)'].values
+    z_raw = raw_dfs['lorenzo_jumping']['Linear Acceleration z (m/s^2)'].values
+    raw_abs_jumping = np.sqrt(x_raw**2 + y_raw**2 + z_raw**2)
+    
+    # Calculate absolute acceleration from x, y, z components - processed data
+    x_proc = processed_dfs['lorenzo_jumping']['Linear Acceleration x (m/s^2)'].values
+    y_proc = processed_dfs['lorenzo_jumping']['Linear Acceleration y (m/s^2)'].values
+    z_proc = processed_dfs['lorenzo_jumping']['Linear Acceleration z (m/s^2)'].values
+    processed_abs_jumping = np.sqrt(x_proc**2 + y_proc**2 + z_proc**2)
+
+# Plot walking raw vs processed absolute acceleration (left)
+axes_proc[0].plot(raw_dfs['kaykay_walking'][time_col], raw_abs_walking, 'k-', alpha=0.5, label='Raw Absolute Acceleration')
+axes_proc[0].plot(processed_dfs['kaykay_walking'][time_col], processed_abs_walking, 'b-', linewidth=2, alpha=0.8, label='Filtered Absolute Acceleration')
+axes_proc[0].set_title('Walking: Raw vs Filtered (Absolute Acceleration)', fontsize=14)
+axes_proc[0].set_xlabel('Time (s)')
+axes_proc[0].set_ylabel('Absolute Acceleration (m/s²)')
+axes_proc[0].set_ylim(bottom=0)  # Ensure y-axis starts at 0
+axes_proc[0].grid(True)
+axes_proc[0].legend()
+
+# Plot jumping raw vs processed absolute acceleration (right)
+axes_proc[1].plot(raw_dfs['lorenzo_jumping'][time_col], raw_abs_jumping, 'k-', alpha=0.5, label='Raw Absolute Acceleration')
+axes_proc[1].plot(processed_dfs['lorenzo_jumping'][time_col], processed_abs_jumping, 'r-', linewidth=2, alpha=0.8, label='Filtered Absolute Acceleration')
+axes_proc[1].set_title('Jumping: Raw vs Filtered (Absolute Acceleration)', fontsize=14)
+axes_proc[1].set_xlabel('Time (s)')
+axes_proc[1].set_ylabel('Absolute Acceleration (m/s²)')
+axes_proc[1].set_ylim(bottom=0)  # Ensure y-axis starts at 0
+axes_proc[1].grid(True)
+axes_proc[1].legend()
+
+plt.tight_layout()
+plt.show()
+print("Raw vs processed absolute acceleration plots displayed.")
+
 #region ---------------------------------PLOT ALL PROCESSED DATA (X, Y, Z AXES)-----------------------------------------------
 # Plot all processed data for each axis in 3x2 grid (3 users, walking vs jumping)
 print("Plotting all processed data for each axis (X, Y, Z)...")
@@ -582,24 +709,8 @@ acc = accuracy_score(y_test, predictions)
 recall = recall_score(y_test, predictions)
 
 # Print evaluation metrics
-print(f"Predictions: {predictions}")
-print(f"Probabilities: {clf_probs}")
 print(f"Accuracy: {acc}")
 print(f"Recall: {recall}")
-
-# Plot confusion matrix for visual evaluation
-cm = confusion_matrix(y_test, predictions)
-ConfusionMatrixDisplay(cm).plot()
-plt.title('Confusion Matrix')
-plt.show()
-
-# Plot ROC curve to evaluate model discrimination ability
-fpr, tpr, thresholds = roc_curve(y_test, clf_probs[:, 1], pos_label=clf.classes_[1])
-RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
-plt.title('ROC Curve')
-plt.show()
-auc = roc_auc_score(y_test, clf_probs[:, 1])
-print(f"AUC: {auc}\n")
 
 # Calculate feature correlation with activity label for feature importance analysis
 correlation = final_dataset.corr()['activity'].sort_values(ascending=False)
@@ -609,17 +720,39 @@ print(correlation)
 
 #region ---------------------------------PLOT CORRELATION BAR GRAPH-----------------------------------------------
 # Visualize correlation between each feature and the activity label
-fig_correlation, ax = plt.subplots(figsize=(15, 8))
-ax.bar(correlation.index, correlation.values)
+print("Plotting feature importance correlation...")
+fig_correlation, ax = plt.subplots(figsize=(12, 8))
+fig_correlation.suptitle('Top 10 Features by Correlation with Activity', fontsize=16)
 
-ax.set_title('Correlation Between Features and Activity', fontsize=14)
-ax.set_xlabel('Features', fontsize=12)
-ax.set_ylabel('Correlation', fontsize=12)
+# Sort correlation values and get top 10 features
+sorted_corr = correlation.sort_values(ascending=False)
+top_10_corr = sorted_corr.head(10)  # Get only top 10 features
 
-plt.xticks(rotation=90, ha='right', fontsize=10)
+# Create horizontal bar chart
+bars = ax.barh(top_10_corr.index, top_10_corr.values, color='#20c997', alpha=0.8)
+
+# Add correlation values next to bars
+for i, (feature, corr) in enumerate(top_10_corr.items()):
+    ax.text(corr + 0.01, i, f'{corr:.2f}', va='center', fontsize=10, color='white')
+
+# Set axis labels and limits
+ax.set_xlabel('Correlation', fontsize=12)
+ax.set_ylabel('Features', fontsize=12)
+ax.set_xlim(0, 1.1)  # Set x-axis limit for horizontal bar chart
+
+# Invert y-axis to show highest correlation at the top
+ax.invert_yaxis()
+
+# Format y-axis labels
 plt.yticks(fontsize=10)
+plt.xticks(fontsize=10)
+
+# Add grid
+ax.grid(True, alpha=0.3, axis='x')
+
 plt.tight_layout()
 plt.show()
+print("Feature importance correlation plot displayed.")
 #endregion
 
 # Save the final model again to ensure it's stored
